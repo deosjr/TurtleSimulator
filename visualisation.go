@@ -11,6 +11,7 @@ import (
 
 type visualiser interface {
     Visualise(*world)
+    VisualiseMove(w *world, from, to pos)
     VisualiseUnchanged(*world)
     Finalise()
 }
@@ -34,6 +35,7 @@ func Visualise(v visualiser, w *world) {
         blockPlacedOrRemoved := len(w.grid) != numBlocks
 
         if !turtleMoved && !turtleRotated && !blockPlacedOrRemoved {
+            // when turtle detects or otherwise yields without changing
             v.VisualiseUnchanged(w)
 		    w.tick <- true
 		    fmt.Println(turtlePos, turtleHeading)
@@ -41,18 +43,28 @@ func Visualise(v visualiser, w *world) {
             continue
         }
 
+
+        if turtleMoved {
+            v.VisualiseMove(w, turtlePos, t.(*turtle).pos)
+        } else {
+            v.Visualise(w)
+        }
+
         numBlocks = len(w.grid)
         turtlePos = t.(*turtle).pos
         turtleHeading = t.(*turtle).heading
 
-        v.Visualise(w)
 	    // send tick update to turtle and await yield
 	    // todo: abort if turtle takes too long
 	    w.tick <- true
 	    fmt.Println(turtlePos, turtleHeading)
 	    <-w.tack
     }
-    v.Visualise(w)
+    if turtleMoved {
+        v.VisualiseMove(w, turtlePos, t.(*turtle).pos)
+    } else {
+        v.Visualise(w)
+    }
     v.Finalise()
 }
 
@@ -84,6 +96,7 @@ func printworld(w *world) {
 }
 
 func (ascii) Visualise(w *world) { printworld(w) }
+func (ascii) VisualiseMove(w *world, from, to pos) { printworld(w) }
 func (ascii) VisualiseUnchanged(w *world) { printworld(w) }
 func (ascii) Finalise() {}
 
@@ -236,6 +249,10 @@ func getturtleobj(cube m.AABB) m.Object {
 // end copy
 
 func (r *raytracer) Visualise(w *world) {
+    r.visualise(w, 0, 0, 0)
+}
+
+func (r *raytracer) visualise(w *world, dx, dy, dz float32) {
 
 	r.scene.Objects = []m.Object{}
 
@@ -244,13 +261,13 @@ func (r *raytracer) Visualise(w *world) {
 
 	for k, v := range w.grid {
 		// z is up in turtle world, y is up in raytracing world
-		// also left-right seem to be reversed _again_ (i thought id fixed that)
         // 0.5 is added to map to 0,0,0 through 1,1,1
 		transform := m.Translate(m.Vector{float32(-k.x) + 0.5, float32(k.z) + 0.5, float32(k.y) + 0.5})
 		var mat m.Material
 		switch v.(type) {
 		case Turtle:
 			//mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(255, 0, 0)))
+		    transform = m.Translate(m.Vector{float32(-k.x) + 0.5 + dx, float32(k.z) + 0.5 + dz, float32(k.y) + 0.5 + dy})
             switch v.(*turtle).heading {
             //case pos{0, 1, 0}: dont rotate when facing north
             case pos{1, 0, 0}:
@@ -289,6 +306,18 @@ func (r *raytracer) Visualise(w *world) {
 	}
 	r.film = render.Render(params)
 	render.AddToAVI(r.avi, r.film)
+}
+
+func (r *raytracer) VisualiseMove(w *world, from, to pos) {
+    dif := to.sub(from)
+    // i will regret flipping the x-axis. here's the first regret
+    stepx := -float32(dif.x) / 8.0
+    stepy := float32(dif.y) / 8.0
+    stepz := float32(dif.z) / 8.0
+    for i:=8; i>0; i-- {
+        fi := float32(-i)
+        r.visualise(w, fi*stepx, fi*stepy, fi*stepz)
+    }
 }
 
 func (r *raytracer) VisualiseUnchanged(w *world) {
