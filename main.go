@@ -124,7 +124,7 @@ func main() {
 	// wall building program
 	t.SetProgram(wallbuildfunc())
 
-    //vis := NewRaytracer()
-    vis := ascii{}
+    vis := NewRaytracer()
+    //vis := ascii{}
     Visualise(vis, w)
 }
