@@ -19,7 +19,7 @@ type Turtle interface {
 	PlaceDown() bool
 
 	// my own functions
-	SetProgram(func(Turtle))
+	SetProgram(program)
 	Run()
 	IsRunning() bool
 	String() string
@@ -29,11 +29,13 @@ type turtle struct {
 	pos     pos
 	heading pos
 	world   *world
-	program func(Turtle)
+	program program
 	tick    <-chan bool
 	ack     chan<- bool
 	running bool
 }
+
+type program func(Turtle)
 
 func (t *turtle) TurnLeft() {
 	<-t.tick
@@ -155,7 +157,7 @@ func (t *turtle) down() pos {
 	return pos{t.pos.x, t.pos.y, t.pos.z - 1}
 }
 
-func (t *turtle) SetProgram(f func(Turtle)) {
+func (t *turtle) SetProgram(f program) {
 	t.program = f
 }
 
