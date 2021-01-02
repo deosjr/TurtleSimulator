@@ -60,11 +60,10 @@ func Visualise(v visualiser, w *world) {
 	    fmt.Println(turtlePos, turtleHeading)
 	    <-w.tack
     }
-    if turtleMoved {
+    if turtlePos != t.(*turtle).pos {
         v.VisualiseMove(w, turtlePos, t.(*turtle).pos)
-    } else {
-        v.Visualise(w)
     }
+    v.Visualise()
     v.Finalise()
 }
 
