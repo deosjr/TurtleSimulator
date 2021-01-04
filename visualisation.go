@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+    "image"
+    "image/color"
 	"math"
 
 	m "github.com/deosjr/GRayT/src/model"
@@ -63,7 +65,7 @@ func Visualise(v visualiser, w *world) {
     if turtlePos != t.(*turtle).pos {
         v.VisualiseMove(w, turtlePos, t.(*turtle).pos)
     }
-    v.Visualise()
+    v.Visualise(w)
     v.Finalise()
 }
 
@@ -135,117 +137,79 @@ func NewRaytracer() *raytracer {
     }
 }
 
-// experimental: to be taken into grayt if working
-type cubetexture struct {
-	colorFunc   func(textureSpace m.Vector) m.Color
-}
+func getturtleobj() m.Object {
+    /*
+    // img is mapped onto the cube as follows:
+        |---| 
+        | 2 |
+    |---|---|---|---|
+    | 1 | 3 | 5 | 6 |
+    |---|---|---|---|
+        | 4 |
+        |---|
+    // 1 is the front of the cube, facing in +Z direction
+    // 2 is right, 3 is bottom, 4 is left, 5 is back, 6 is top
+    // each square has topleft at topleft, so oriented the same
+    // therefore NOT neatly wrapping the whole cross around the cube!
+    // works for arbitrary resolution as long as aspect ratio is 4:3
+    */
+    img := image.NewRGBA(image.Rect(0,0,4,3))
+    front := color.RGBA{240, 200, 60, 255}
+    cube := color.RGBA{255, 0, 0, 255}
+    img.Set(0,1,front)
+    img.Set(1,0,cube)
+    img.Set(1,1,cube)
+    img.Set(1,2,cube)
+    img.Set(2,1,cube)
+    img.Set(3,1,cube)
 
-func (t cubetexture) GetColor(si *m.SurfaceInteraction) m.Color {
-	uv := texfunc(si)
-	return t.colorFunc(uv)
-}
-
-// copied from model/texture:62 TriangleMeshUVFunc
-func texfunc(si *m.SurfaceInteraction) m.Vector {
-    ulhc := m.Vector{0,0,0}
-    urhc := m.Vector{1,0,0}
-    llhc := m.Vector{0,1,0}
-    lrhc := m.Vector{1,1,0}
-    tr := si.GetObject().(m.TriangleInMesh)
-    p := si.UntransformedPoint
-    l0, l1, l2 := tr.Barycentric(p)
-    p0, p1, p2 := tr.PointIndices()
-    var uv0, uv1, uv2 m.Vector
-    var z float32
-    // mapping cube coords: each face to square 0,0 - 1,1
-    // alternative is to accurately map onto a cross cube layout
-    switch {
-    case p0 == 0 &&  p1 == 1 && p2 == 3:
-        uv0, uv1, uv2 = ulhc, urhc, llhc
-        z = 0
-    case p0 == 1 && p1 == 2 && p2 == 3:
-        uv0, uv1, uv2 = urhc, lrhc, llhc
-        z = 0
-    case p0 == 1 &&  p1 == 0 && p2 == 5:
-        uv0, uv1, uv2 = ulhc, urhc, llhc
-        z = 1
-    case p0 == 0 && p1 == 4 && p2 == 5:
-        uv0, uv1, uv2 = urhc, lrhc, llhc
-        z = 1
-    case p0 == 2 &&  p1 == 1 && p2 == 6:
-        uv0, uv1, uv2 = ulhc, urhc, llhc
-        z = 2
-    case p0 == 1 && p1 == 5 && p2 == 6:
-        uv0, uv1, uv2 = urhc, lrhc, llhc
-        z = 2
-    case p0 == 3 &&  p1 == 2 && p2 == 7:
-        uv0, uv1, uv2 = ulhc, urhc, llhc
-        z = 3
-    case p0 == 2 && p1 == 6 && p2 == 7:
-        uv0, uv1, uv2 = urhc, lrhc, llhc
-        z = 3
-    case p0 == 0 &&  p1 == 3 && p2 == 4:
-        uv0, uv1, uv2 = ulhc, urhc, llhc
-        z = 4
-    case p0 == 3 && p1 == 7 && p2 == 4:
-        uv0, uv1, uv2 = urhc, lrhc, llhc
-        z = 4
-    case p0 == 5 &&  p1 == 4 && p2 == 6:
-        uv0, uv1, uv2 = ulhc, urhc, llhc
-        z = 5
-    case p0 == 4 && p1 == 7 && p2 == 6:
-        uv0, uv1, uv2 = urhc, lrhc, llhc
-        z = 5
-    }
-    uv := uv0.Times(l0).Add(uv1.Times(l1)).Add(uv2.Times(l2))
-    // hide facenum in uv.Z coord
-    uv.Z = z
-    return uv
-}
-
-// instead of abusing z coord, this could be done with color values
-// on each vertex in the mesh, then blending just like gettin uv values
-func cf(uv m.Vector) m.Color {
-    switch uv.Z {
-    // front of the turtle is yellow
-    case 1:
-        return m.NewColor(250, 230, 60)
-    default:
-        return m.NewColor(255,0,0)
-    }
-}
-
-func getturtleobj(cube m.AABB) m.Object {
     // copied from model/cube.go:128 cuboid tesselate
-    f := func(p1,p2,p3,p4 int64) (m.Face, m.Face) {
-        return m.Face{p1, p2, p4}, m.Face{p2, p3, p4}
+    f := func(p0,p1,p2,p3 int64) (m.Face, m.Face) {
+        return m.Face{p0, p2, p1}, m.Face{p1, p2, p3}
     }
-    pmin := cube.Pmin
-	pmax := cube.Pmax
+    // unit cube centered around origin
+    var min, max float32 = -0.5, 0.5
 
-	p1 := m.Vector{pmin.X, pmax.Y, pmax.Z}
-	p2 := m.Vector{pmax.X, pmax.Y, pmax.Z}
-	p3 := m.Vector{pmax.X, pmax.Y, pmin.Z}
-	p4 := m.Vector{pmin.X, pmax.Y, pmin.Z}
-
-	p5 := m.Vector{pmin.X, pmin.Y, pmax.Z}
-	p6 := m.Vector{pmax.X, pmin.Y, pmax.Z}
-	p7 := m.Vector{pmax.X, pmin.Y, pmin.Z}
-	p8 := m.Vector{pmin.X, pmin.Y, pmin.Z}
-    vertices := []m.Vector{p1, p2, p3, p4, p5, p6, p7, p8}
+    // see ilkinulas.github.io/development/unity/2016/05/06/uv-mapping.html for details
+	p0 := m.Vector{max, max, max}
+	p1 := m.Vector{max, min, max}
+	p2 := m.Vector{min, max, max}
+	p3 := m.Vector{min, min, max}
+	p4 := m.Vector{max, min, min}
+	p5 := m.Vector{min, min, min}
+	p6 := m.Vector{max, max, min}
+	p7 := m.Vector{min, max, min}
+    vertices := []m.Vector{p0, p1, p2, p3, p4, p5, p6, p7, p0, p2, p0, p6, p2, p7}
 
 	faces := make([]m.Face, 12)
 	faces[0], faces[1] = f(0, 1, 2, 3)
-	faces[2], faces[3] = f(1, 0, 4, 5)
-	faces[4], faces[5] = f(2, 1, 5, 6)
-	faces[6], faces[7] = f(3, 2, 6, 7)
-	faces[8], faces[9] = f(0, 3, 7, 4)
-	faces[10], faces[11] = f(5, 4, 7, 6)
-    turtlemat := m.NewDiffuseMaterial(cubetexture{colorFunc: cf})
+	faces[2], faces[3] = f(10, 11, 1, 4)
+	faces[4], faces[5] = f(1, 4, 3, 5)
+	faces[6], faces[7] = f(3, 5, 12, 13)
+	faces[8], faces[9] = f(4, 6, 5, 7)
+	faces[10], faces[11] = f(6, 8, 7, 9)
+    uvmap := map[int64]m.Vector{
+        0:  m.Vector{0, 2.0/3.0, 0},
+        1:  m.Vector{0.25, 2.0/3.0, 0},
+        2:  m.Vector{0, 1.0/3.0, 0},
+        3:  m.Vector{0.25, 1.0/3.0, 0},
+        4:  m.Vector{0.5, 2.0/3.0, 0},
+        5:  m.Vector{0.5, 1.0/3.0, 0},
+        6:  m.Vector{0.75, 2.0/3.0, 0},
+        7:  m.Vector{0.75, 1.0/3.0, 0},
+        8:  m.Vector{1, 2.0/3.0, 0},
+        9:  m.Vector{1, 1.0/3.0, 0},
+        10: m.Vector{0.25, 1, 0},
+        11: m.Vector{0.5, 1, 0},
+        12: m.Vector{0.25, 0, 0},
+        13: m.Vector{0.5, 0, 0},
+    }
+
+    turtlemat := m.NewDiffuseMaterial(m.NewImageTexture(img, m.TriangleMeshUVFunc))
     turtleobj := m.NewTriangleMesh(vertices, faces, turtlemat)
+    turtleobj.(*m.TriangleMesh).UV = uvmap
     return turtleobj
 }
-// end copy
 
 func (r *raytracer) Visualise(w *world) {
     r.visualise(w, 0, 0, 0)
@@ -276,7 +240,7 @@ func (r *raytracer) visualise(w *world, dx, dy, dz float32) {
             case pos{-1, 0, 0}:
                 transform = transform.Mul(m.RotateY(-math.Pi/2.0))
             }
-		    shared := m.NewSharedObject(getturtleobj(cube), transform)
+		    shared := m.NewSharedObject(getturtleobj(), transform)
 		    r.scene.Add(shared)
             continue
 		case grass:
