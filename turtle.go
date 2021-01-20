@@ -23,6 +23,7 @@ type Turtle interface {
 	Run()
 	IsRunning() bool
 	String() string
+    SetInventory(blocktype)
 }
 
 type turtle struct {
@@ -33,6 +34,8 @@ type turtle struct {
 	tick    <-chan bool
 	ack     chan<- bool
 	running bool
+    // hack for now: dont want to build inventory management yet
+    inventory blocktype
 }
 
 type program func(Turtle)
@@ -141,8 +144,30 @@ func (t *turtle) place(p pos) bool {
 	if ok {
 		return false
 	}
-	t.world.grid[p] = block{}
+    var toplace Block
+    switch t.inventory {
+    case Bedrock:
+        toplace = block{}
+    case Stone:
+        toplace = stone{}
+    case Grass:
+        toplace = grass{}
+    case Stairs:
+	    heading := pos{t.heading.y * -1, t.heading.x, 0}
+        flipped := false
+        if t.up() == p {
+            if _, upok := t.world.grid[p.up()]; upok {
+                flipped = true
+            }
+        }
+        toplace = stairs{heading:heading, flipped:flipped}
+    }
+	t.world.grid[p] = toplace
 	return true
+}
+
+func (t *turtle) SetInventory(bt blocktype) {
+    t.inventory = bt
 }
 
 func (t *turtle) forward() pos {
@@ -150,11 +175,11 @@ func (t *turtle) forward() pos {
 }
 
 func (t *turtle) up() pos {
-	return pos{t.pos.x, t.pos.y, t.pos.z + 1}
+    return t.pos.up()
 }
 
 func (t *turtle) down() pos {
-	return pos{t.pos.x, t.pos.y, t.pos.z - 1}
+    return t.pos.down()
 }
 
 func (t *turtle) SetProgram(f program) {

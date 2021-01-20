@@ -12,6 +12,14 @@ func (p pos) sub(q pos) pos {
 	return pos{p.x - q.x, p.y - q.y, p.z - q.z}
 }
 
+func (p pos) up() pos {
+	return pos{p.x, p.y, p.z + 1}
+}
+
+func (p pos) down() pos {
+	return pos{p.x, p.y, p.z - 1}
+}
+
 // convention: world minimal coord is 0,0,0 and max dim,dim,dim
 type world struct {
 	grid map[pos]Block
@@ -35,6 +43,20 @@ type block struct{}
 type grass struct{}
 type stone struct{}
 
+type stairs struct{
+    heading pos
+    flipped bool
+}
+
+type blocktype int
+
+const (
+    Bedrock blocktype = iota
+    Stone
+    Grass
+    Stairs
+)
+
 func wallbuildfunc() program {
     return func(t Turtle) {
 		sidestepRight := func() {
@@ -47,6 +69,7 @@ func wallbuildfunc() program {
 			t.Forward()
 			t.TurnRight()
 		}
+        t.SetInventory(Stone)
 		if t.Detect() {
 			sidestepRight()
 			t.Forward()
@@ -89,6 +112,7 @@ func wallbuildfunc() program {
 		}
 		t.Down()
 		t.TurnRight()
+        t.SetInventory(Stairs)
 		t.PlaceUp()
 		t.Back()
 		t.Back()
@@ -124,7 +148,7 @@ func main() {
 	// wall building program
 	t.SetProgram(wallbuildfunc())
 
-    vis := NewRaytracer()
+    vis := NewRaytracer(false, true)
     //vis := ascii{}
     Visualise(vis, w)
 }
