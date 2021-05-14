@@ -6,6 +6,10 @@ import (
     "image/color"
 	"math"
 
+    "github.com/deosjr/TurtleSimulator/blocks"
+    "github.com/deosjr/TurtleSimulator/coords"
+    "github.com/deosjr/TurtleSimulator/turtle"
+
 	m "github.com/deosjr/GRayT/src/model"
 	"github.com/deosjr/GRayT/src/render"
 	"github.com/deosjr/GenGeo/gen"
@@ -13,78 +17,93 @@ import (
 )
 
 type visualiser interface {
-    Visualise(*world)
-    VisualiseMove(w *world, from, to pos)
-    VisualiseUnchanged(*world)
-    Finalise()
+    Visualise(*turtle.World)
+    VisualiseMove(w *turtle.World, from, to coords.Pos)
+    VisualiseUnchanged(*turtle.World)
+    Finalise(entireRun bool)
 }
 
-func Visualise(v visualiser, w *world) {
+// showEntireRun=false means we only want to show the end state
+func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
     // for now, exactly one turtle in the world
-    t := w.turtles[0]
+    t := w.Turtles[0]
     go t.Run()
+    for !t.IsRunning() {}
 
-    v.Visualise(w)
-    numBlocks := len(w.grid)
-    turtlePos := t.(*turtle).pos
-    turtleHeading := t.(*turtle).heading
+    if showEntireRun {
+        v.Visualise(w)
+    }
+    numBlocks := len(w.Grid)
+    turtlePos := t.GetPos()
+    turtleHeading := t.GetHeading()
 
     for t.IsRunning() {
 	    // only render if world has changed since last tick
         // todo: change in turtle position vs adding/removing blocks should
         // result in different optimisations (rebuilding bvh or not, for example)
-        turtleMoved := turtlePos != t.(*turtle).pos
-        turtleRotated := turtleHeading != t.(*turtle).heading
-        blockPlacedOrRemoved := len(w.grid) != numBlocks
+        turtleMoved := turtlePos != t.GetPos()
+        turtleRotated := turtleHeading != t.GetHeading()
+        blockPlacedOrRemoved := len(w.Grid) != numBlocks
 
         if !turtleMoved && !turtleRotated && !blockPlacedOrRemoved {
             // when turtle detects or otherwise yields without changing
-            v.VisualiseUnchanged(w)
-		    w.tick <- true
-		    fmt.Println(turtlePos, turtleHeading)
-		    <-w.tack
+            if showEntireRun {
+                v.VisualiseUnchanged(w)
+            }
+		    w.Tick <- true
+		    fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
+		    <-w.Tack
             continue
         }
 
-
-        if turtleMoved {
-            v.VisualiseMove(w, turtlePos, t.(*turtle).pos)
-        } else {
-            v.Visualise(w)
+        if showEntireRun {
+            if turtleMoved {
+                v.VisualiseMove(w, turtlePos, t.GetPos())
+            } else {
+                v.Visualise(w)
+            }
         }
 
-        numBlocks = len(w.grid)
-        turtlePos = t.(*turtle).pos
-        turtleHeading = t.(*turtle).heading
+        numBlocks = len(w.Grid)
+        turtlePos = t.GetPos()
+        turtleHeading = t.GetHeading()
 
 	    // send tick update to turtle and await yield
 	    // todo: abort if turtle takes too long
-	    w.tick <- true
-	    fmt.Println(turtlePos, turtleHeading)
-	    <-w.tack
+	    w.Tick <- true
+		fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
+	    <-w.Tack
     }
-    if turtlePos != t.(*turtle).pos {
-        v.VisualiseMove(w, turtlePos, t.(*turtle).pos)
+    if showEntireRun && turtlePos != t.GetPos() {
+        v.VisualiseMove(w, turtlePos, t.GetPos())
     }
     v.Visualise(w)
-    v.Finalise()
+    v.Finalise(showEntireRun)
+}
+
+func Visualise(v visualiser, w *turtle.World) {
+    visualise(v, w, true)
+}
+
+func VisualiseEndState(v visualiser, w *turtle.World) {
+    visualise(v, w, false)
 }
 
 type ascii struct {}
 
 // prints grid from 0,0,0 at bottom left to dim,dim,dim at top right
 // for each x,y coord, prints only the highest block, if any (top down view)
-func printworld(w *world) {
-	for y := w.dim; y >= 0; y-- {
+func printworld(w *turtle.World) {
+	for y := w.Dim; y >= 0; y-- {
 	Loop:
 		for x := 0; x < 5; x++ {
-			for z := w.dim; z >= 0; z-- {
-				b, ok := w.grid[pos{x, y, 0}]
+			for z := w.Dim; z >= 0; z-- {
+				b, ok := w.Grid[coords.Pos{x, y, 0}]
 				if !ok {
 					continue
 				}
 				switch t := b.(type) {
-				case Turtle:
+				case turtle.Turtle:
 					fmt.Print(t.String())
 				default:
 					fmt.Print("x")
@@ -97,10 +116,10 @@ func printworld(w *world) {
 	}
 }
 
-func (ascii) Visualise(w *world) { printworld(w) }
-func (ascii) VisualiseMove(w *world, from, to pos) { printworld(w) }
-func (ascii) VisualiseUnchanged(w *world) { printworld(w) }
-func (ascii) Finalise() {}
+func (ascii) Visualise(w *turtle.World) { printworld(w) }
+func (ascii) VisualiseMove(w *turtle.World, from, to coords.Pos) { printworld(w) }
+func (ascii) VisualiseUnchanged(w *turtle.World) { printworld(w) }
+func (ascii) Finalise(_ bool) {}
 
 type raytracer struct {
     // todo: hide this import in grayt
@@ -155,11 +174,11 @@ func getturtleobj() m.Object {
     return m.CubeMesh(0.7, img)
 }
 
-func (r *raytracer) Visualise(w *world) {
+func (r *raytracer) Visualise(w *turtle.World) {
     r.visualise(w, 0, 0, 0)
 }
 
-func (r *raytracer) visualise(w *world, dx, dy, dz float32) {
+func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 
 	r.scene.Objects = []m.Object{}
 
@@ -176,44 +195,61 @@ func (r *raytracer) visualise(w *world, dx, dy, dz float32) {
 
     var turtlepos m.Vector
 
-	for k, v := range w.grid {
+	for k, v := range w.Grid {
 		// z is up in turtle world, y is up in raytracing world
         // 0.5 is added to map to 0,0,0 through 1,1,1
-		transform := m.Translate(m.Vector{float32(-k.x) + 0.5, float32(k.z) + 0.5, float32(k.y) + 0.5})
+		transform := m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.5, float32(k.Y) + 0.5})
 		var mat m.Material
-		switch v.(type) {
-		case Turtle:
-		    transform = m.Translate(m.Vector{float32(-k.x) + 0.5 + dx, float32(k.z) + 0.5 + dz, float32(k.y) + 0.5 + dy})
-            switch v.(*turtle).heading {
+		switch v.GetType() {
+		case blocks.Turtle:
+		    transform = m.Translate(m.Vector{float32(-k.X) + 0.5 + dx, float32(k.Z) + 0.5 + dz, float32(k.Y) + 0.5 + dy})
+            switch v.GetHeading() {
             //case pos{0, 1, 0}: dont rotate when facing north
-            case pos{1, 0, 0}:
+            case coords.East:
                 transform = transform.Mul(m.RotateY(math.Pi/2.0))
-            case pos{0, -1, 0}:
+            case coords.South:
                 transform = transform.Mul(m.RotateY(math.Pi))
-            case pos{-1, 0, 0}:
+            case coords.West:
                 transform = transform.Mul(m.RotateY(-math.Pi/2.0))
             }
 		    shared := m.NewSharedObject(getturtleobj(), transform)
 		    r.scene.Add(shared)
-            turtlepos = m.Vector{float32(-k.x) + 0.5 + dx, float32(k.z) + 0.5 + dz, float32(k.y) + 0.5 + dy}
+            turtlepos = m.Vector{float32(-k.X) + 0.5 + dx, float32(k.Z) + 0.5 + dz, float32(k.Y) + 0.5 + dy}
             continue
-		case grass:
+		case blocks.Grass:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 255, 0)))
-		case stone:
+		case blocks.Stone:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
-        case stairs:
+		case blocks.Log:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(90, 60, 10)))
+		case blocks.Planks:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 100, 20)))
+		case blocks.Brick:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
+		case blocks.Slab:
+		    transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.25, float32(k.Y) + 0.5})
+            if v.(blocks.BaseBlock).Flipped {
+		        transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.75, float32(k.Y) + 0.5})
+            }
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
+	        slab := m.NewAABB(m.Vector{-0.5, -0.25, -0.5}, m.Vector{0.5, 0.25, 0.5})
+		    block := m.NewCuboid(slab, mat).Tesselate()
+		    shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
+		    r.scene.Add(shared)
+            continue
+        case blocks.Stairs:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
             stairsobj := gen.ExtrudeSolidFace(stairpoints, m.Vector{0,0,1}, mat)
-            switch v.(stairs).heading {
+            switch v.GetHeading() {
             //case pos{0, 1, 0}: dont rotate when facing north
-            case pos{1, 0, 0}:
+            case coords.East:
                 transform = transform.Mul(m.RotateY(math.Pi/2.0))
-            case pos{0, -1, 0}:
+            case coords.South:
                 transform = transform.Mul(m.RotateY(math.Pi))
-            case pos{-1, 0, 0}:
+            case coords.West:
                 transform = transform.Mul(m.RotateY(-math.Pi/2.0))
             }
-            if v.(stairs).flipped {
+            if v.(blocks.BaseBlock).Flipped {
                 transform = transform.Mul(m.RotateX(math.Pi))
             }
             shared := m.NewSharedObject(stairsobj, transform)
@@ -229,7 +265,7 @@ func (r *raytracer) visualise(w *world, dx, dy, dz float32) {
 	r.scene.Precompute()
 
     if !r.followTurtle {
-	    from, to := m.Vector{0, 2, -5}, m.Vector{0, 0, 10}
+	    from, to := m.Vector{0, 15, -5}, m.Vector{0, 0, 10}
 	    r.camera.LookAt(from, to, m.Vector{0, 1, 0})
     } else {
 	    to := turtlepos
@@ -247,27 +283,31 @@ func (r *raytracer) visualise(w *world, dx, dy, dz float32) {
 	}
 	r.film = render.Render(params)
 	render.AddToAVI(r.avi, r.film)
+    r.film.SaveAsPNG("turtle.png")
 }
 
-func (r *raytracer) VisualiseMove(w *world, from, to pos) {
+func (r *raytracer) VisualiseMove(w *turtle.World, from, to coords.Pos) {
     if !r.move {
         return
     }
-    dif := to.sub(from)
+    dif := to.Sub(from)
     // i will regret flipping the x-axis. here's the first regret
-    stepx := -float32(dif.x) / 8.0
-    stepy := float32(dif.y) / 8.0
-    stepz := float32(dif.z) / 8.0
+    stepx := -float32(dif.X) / 8.0
+    stepy := float32(dif.Y) / 8.0
+    stepz := float32(dif.Z) / 8.0
     for i:=8; i>0; i-- {
         fi := float32(-i)
         r.visualise(w, fi*stepx, fi*stepy, fi*stepz)
     }
 }
 
-func (r *raytracer) VisualiseUnchanged(w *world) {
+func (r *raytracer) VisualiseUnchanged(w *turtle.World) {
     render.AddToAVI(r.avi, r.film)
 }
 
-func (r *raytracer) Finalise() {
-	render.SaveAVI(r.avi)
+func (r *raytracer) Finalise(entireRun bool) {
+    if entireRun {
+	    render.SaveAVI(r.avi)
+    }
+    r.avi.Close()
 }
