@@ -32,6 +32,8 @@ type Turtle interface {
     SetInventory(blocks.Blocktype)
     GetPos() coords.Pos
     GetHeading() coords.Pos
+    Tick()
+    Tack()
 }
 
 type turtle struct {
@@ -40,8 +42,8 @@ type turtle struct {
 	//heading coords.Pos
 	world   *World
 	program Program
-	tick    <-chan bool
-	ack     chan<- bool
+	tick    chan bool
+	ack     chan bool
 	running bool
     // hack for now: dont want to build inventory management yet
     inventory blocks.Blocktype
@@ -65,14 +67,15 @@ func (t *turtle) TurnRight() {
 	t.ack <- true
 }
 
+// TODO: three lock/unlocks of mutex, can be optimised
 func (t *turtle) move(p coords.Pos) error {
-	_, ok := t.world.Grid[p]
+    _, ok := t.world.Read(p)
 	if ok {
 		return fmt.Errorf("block in position")
 	}
-	delete(t.world.Grid, t.pos)
+    t.world.Delete(t.pos)
 	t.pos = p
-	t.world.Grid[p] = t
+    t.world.Write(p, t)
 	return nil
 }
 
@@ -126,7 +129,7 @@ func (t *turtle) DetectDown() bool {
 }
 
 func (t *turtle) detect(p coords.Pos) bool {
-	_, ok := t.world.Grid[p]
+	_, ok := t.world.Read(p)
 	return ok
 }
 
@@ -138,11 +141,11 @@ func (t *turtle) Dig() bool {
 }
 
 func (t *turtle) dig(p coords.Pos) bool {
-	_, ok := t.world.Grid[p]
+	_, ok := t.world.Read(p)
     if !ok {
         return false
     }
-    delete(t.world.Grid, p)
+    t.world.Delete(p)
     return true
 }
 
@@ -168,7 +171,7 @@ func (t *turtle) PlaceDown() bool {
 }
 
 func (t *turtle) place(p coords.Pos) bool {
-	_, ok := t.world.Grid[p]
+	_, ok := t.world.Read(p)
 	if ok {
 		return false
 	}
@@ -177,7 +180,7 @@ func (t *turtle) place(p coords.Pos) bool {
 	    heading := coords.Pos{t.Heading.Y * -1, t.Heading.X, 0}
         flipped := false
         if t.up() == p {
-            if _, upok := t.world.Grid[p.Up()]; upok {
+            if _, upok := t.world.Read(p.Up()); upok {
                 flipped = true
             }
         }
@@ -186,13 +189,13 @@ func (t *turtle) place(p coords.Pos) bool {
     if t.inventory == blocks.Slab {
         flipped := false
         if t.up() == p {
-            if _, upok := t.world.Grid[p.Up()]; upok {
+            if _, upok := t.world.Read(p.Up()); upok {
                 flipped = true
             }
         }
         toplace = blocks.BaseBlock{Type: blocks.Slab, Flipped: flipped}
     }
-	t.world.Grid[p] = toplace
+	t.world.Write(p, toplace)
 	return true
 }
 
@@ -220,6 +223,13 @@ func (t *turtle) SetProgram(f Program) {
 	t.program = f
 }
 
+func (t *turtle) Tick() {
+    t.tick <- true
+}
+func (t *turtle) Tack() {
+    <-t.ack
+}
+
 func (t *turtle) Run() {
 	t.running = true
 	t.program(t)
@@ -244,11 +254,12 @@ func (t *turtle) String() string {
 	return "ERROR"
 }
 
-// turtle starts with heading north
-func NewTurtle(p coords.Pos, w *World, tick <-chan bool, ack chan<- bool) Turtle {
+func NewTurtle(p coords.Pos, w *World) Turtle {
+	tick := make(chan bool, 1)
+	ack := make(chan bool, 1)
 	t := &turtle{
         BaseBlock: blocks.BaseBlock{
-		    Heading: coords.Pos{0, 1, 0},
+		    Heading: coords.North,
             Type: blocks.Turtle,
         },
 		pos:     p,
@@ -256,6 +267,6 @@ func NewTurtle(p coords.Pos, w *World, tick <-chan bool, ack chan<- bool) Turtle
 		tick:    tick,
 		ack:     ack,
 	}
-	w.Grid[p] = t
+    w.Write(p, t)
 	return t
 }

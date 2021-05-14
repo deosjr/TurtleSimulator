@@ -13,20 +13,18 @@ import (
 // each animation takes 8 ticks to complete unless otherwise specified.
 
 func main() {
-	tick := make(chan bool, 1)
-	tack := make(chan bool, 1)
-    w := turtle.NewWorld(5, tick, tack)
-	//w.grid[pos{0, 3, 0}] = block{}
-	//w.grid[pos{2, 2, 0}] = block{}
+    w := turtle.NewWorld(5)
 	for y := -10; y < 10; y++ {
 		for x := -10; x < 10; x++ {
-			w.Grid[coords.Pos{x, y, -1}] = blocks.GetBlock(blocks.Grass)
+            w.Write(coords.Pos{x, y, -1}, blocks.GetBlock(blocks.Grass))
 		}
 	}
-	t := turtle.NewTurtle(coords.Pos{0, 0, 0}, w, tick, tack)
-    w.Turtles = []turtle.Turtle{t}
+	t1 := turtle.NewTurtle(coords.Pos{0, 0, 0}, w)
+	t2 := turtle.NewTurtle(coords.Pos{4, 0, 0}, w)
+    w.Turtles = []turtle.Turtle{t1, t2}
 	// wall building program
-	t.SetProgram(programs.WallCorner())
+	t1.SetProgram(programs.Wallbuildfunc())
+	t2.SetProgram(programs.Wallbuildfunc())
 
     vis := NewRaytracer(false, false)
     //vis := ascii{}

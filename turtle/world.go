@@ -1,6 +1,8 @@
 package turtle
 
 import (
+    "sync"
+
     "github.com/deosjr/TurtleSimulator/blocks"
     "github.com/deosjr/TurtleSimulator/coords"
 )
@@ -9,18 +11,60 @@ import (
 
 // convention: world minimal coord is 0,0,0 and max dim,dim,dim
 type World struct {
-	Grid map[coords.Pos]blocks.Block
 	Dim  int
     Turtles []Turtle
-    Tick chan bool
-    Tack chan bool
+
+    mu sync.Mutex
+	grid map[coords.Pos]blocks.Block
 }
 
-func NewWorld(dim int, tick, tack chan bool) *World {
+func NewWorld(dim int) *World {
     return &World{
-        Grid: map[coords.Pos]blocks.Block{},
         Dim: dim,
-        Tick: tick,
-        Tack: tack,
+        grid: map[coords.Pos]blocks.Block{},
     }
+}
+
+func (w *World) Tick() {
+    for _, t := range w.Turtles {
+        t.Tick()
+    }
+    for _, t := range w.Turtles {
+        t.Tack()
+    }
+}
+
+func (w *World) Start() {
+    for _, t := range w.Turtles {
+        go t.Run()
+        for !t.IsRunning() {}
+    }
+}
+
+func (w *World) NumBlocks() int {
+    return len(w.grid)
+}
+
+// TODO: remove?
+func (w *World) Grid() map[coords.Pos]blocks.Block {
+    return w.grid
+}
+
+func (w *World) Read(p coords.Pos) (blocks.Block, bool) {
+    w.mu.Lock()
+    v, ok := w.grid[p]
+    w.mu.Unlock()
+    return v, ok
+}
+
+func (w *World) Write(p coords.Pos, b blocks.Block) {
+    w.mu.Lock()
+    w.grid[p] = b
+    w.mu.Unlock()
+}
+
+func (w *World) Delete(p coords.Pos) {
+    w.mu.Lock()
+    delete(w.grid, p)
+    w.mu.Unlock()
 }

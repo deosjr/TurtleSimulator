@@ -25,15 +25,14 @@ type visualiser interface {
 
 // showEntireRun=false means we only want to show the end state
 func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
-    // for now, exactly one turtle in the world
+    // for now, we focus on one turtle only (this matters e.g. for visualising movement frames)
     t := w.Turtles[0]
-    go t.Run()
-    for !t.IsRunning() {}
+    w.Start()
 
     if showEntireRun {
         v.Visualise(w)
     }
-    numBlocks := len(w.Grid)
+    numBlocks := w.NumBlocks()
     turtlePos := t.GetPos()
     turtleHeading := t.GetHeading()
 
@@ -43,16 +42,15 @@ func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
         // result in different optimisations (rebuilding bvh or not, for example)
         turtleMoved := turtlePos != t.GetPos()
         turtleRotated := turtleHeading != t.GetHeading()
-        blockPlacedOrRemoved := len(w.Grid) != numBlocks
+        blockPlacedOrRemoved := w.NumBlocks() != numBlocks
 
         if !turtleMoved && !turtleRotated && !blockPlacedOrRemoved {
             // when turtle detects or otherwise yields without changing
             if showEntireRun {
                 v.VisualiseUnchanged(w)
             }
-		    w.Tick <- true
+		    w.Tick()
 		    fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
-		    <-w.Tack
             continue
         }
 
@@ -64,15 +62,14 @@ func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
             }
         }
 
-        numBlocks = len(w.Grid)
+        numBlocks = w.NumBlocks()
         turtlePos = t.GetPos()
         turtleHeading = t.GetHeading()
 
-	    // send tick update to turtle and await yield
+	    // send tick update to turtles and await yield
 	    // todo: abort if turtle takes too long
-	    w.Tick <- true
+	    w.Tick()
 		fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
-	    <-w.Tack
     }
     if showEntireRun && turtlePos != t.GetPos() {
         v.VisualiseMove(w, turtlePos, t.GetPos())
@@ -98,7 +95,7 @@ func printworld(w *turtle.World) {
 	Loop:
 		for x := 0; x < 5; x++ {
 			for z := w.Dim; z >= 0; z-- {
-				b, ok := w.Grid[coords.Pos{x, y, 0}]
+				b, ok := w.Read(coords.Pos{x, y, 0})
 				if !ok {
 					continue
 				}
@@ -195,7 +192,7 @@ func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 
     var turtlepos m.Vector
 
-	for k, v := range w.Grid {
+	for k, v := range w.Grid() {
 		// z is up in turtle world, y is up in raytracing world
         // 0.5 is added to map to 0,0,0 through 1,1,1
 		transform := m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.5, float32(k.Y) + 0.5})
