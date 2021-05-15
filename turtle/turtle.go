@@ -254,12 +254,12 @@ func (t *turtle) String() string {
 	return "ERROR"
 }
 
-func NewTurtle(p coords.Pos, w *World) Turtle {
+func NewTurtle(p coords.Pos, w *World, heading coords.Pos) Turtle {
 	tick := make(chan bool, 1)
 	ack := make(chan bool, 1)
 	t := &turtle{
         BaseBlock: blocks.BaseBlock{
-		    Heading: coords.North,
+		    Heading: heading,
             Type: blocks.Turtle,
         },
 		pos:     p,

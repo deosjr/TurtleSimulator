@@ -2,6 +2,9 @@ package programs
 
 import (
     "fmt"
+    "strconv"
+    "strings"
+
     "github.com/deosjr/TurtleSimulator/blocks"
     "github.com/deosjr/TurtleSimulator/turtle"
 )
@@ -29,7 +32,6 @@ func WallCorner() turtle.Program {
             Wallbuildfunc()(t)
             t.Forward()
             t.TurnLeft()
-            //debug(t, t.Back())
             t.Back()
         }
         t.TurnRight()
@@ -42,6 +44,53 @@ func WallCorner() turtle.Program {
         t.TurnLeft()
         // right where we started, in place to build the upper part
         Towerfunc(blocks.Stone)(t)
+    }
+}
+
+// arg strings should be of the form LX or RX,
+// where X is an integer. L/R meaning left/right
+func Walls(arg0 int, args ...string) turtle.Program {
+    type instr struct {
+        dir string
+        n  int
+    }
+    instrs := []instr{}
+    for _, a := range args {
+        var dir string
+        switch {
+        case strings.HasPrefix(a, "L"):
+            dir = "left"
+        case strings.HasPrefix(a, "R"):
+            dir = "right"
+        default:
+            fmt.Printf("incorrect arg: %s\n", a)
+            continue
+        }
+        n, err := strconv.Atoi(strings.TrimLeft(a, "LR"))
+        if err != nil {
+            fmt.Printf("incorrect arg: %s\n", a)
+            continue
+        }
+        instrs = append(instrs, instr{dir: dir, n:n})
+    }
+    return func(t turtle.Turtle) {
+        for i := 0; i < arg0; i++ {
+            Wallbuildfunc()(t)
+        }
+        for _, in := range instrs {
+            if in.dir == "left" {
+                t.Forward()
+                t.TurnLeft()
+                t.Back()
+            } else if in.dir == "right" {
+                t.Forward()
+                t.TurnRight()
+                t.Back()
+            }
+            for i := 0; i < in.n; i++ {
+                Wallbuildfunc()(t)
+            }
+        }
     }
 }
 

@@ -27,9 +27,15 @@ func NewWorld(dim int) *World {
 
 func (w *World) Tick() {
     for _, t := range w.Turtles {
+        if !t.IsRunning() {
+            continue
+        }
         t.Tick()
     }
     for _, t := range w.Turtles {
+        if !t.IsRunning() {
+            continue
+        }
         t.Tack()
     }
 }

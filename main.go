@@ -19,12 +19,12 @@ func main() {
             w.Write(coords.Pos{x, y, -1}, blocks.GetBlock(blocks.Grass))
 		}
 	}
-	t1 := turtle.NewTurtle(coords.Pos{0, 0, 0}, w)
-	t2 := turtle.NewTurtle(coords.Pos{4, 0, 0}, w)
+	t1 := turtle.NewTurtle(coords.Pos{0, 0, 0}, w, coords.North)
+	t2 := turtle.NewTurtle(coords.Pos{5, 5, 0}, w, coords.West)
     w.Turtles = []turtle.Turtle{t1, t2}
 	// wall building program
-	t1.SetProgram(programs.Wallbuildfunc())
-	t2.SetProgram(programs.Wallbuildfunc())
+	t1.SetProgram(programs.Walls(9, "L9", "L9", "L9"))
+	t2.SetProgram(programs.Walls(7, "R7", "R7", "R7"))
 
     vis := NewRaytracer(false, false)
     //vis := ascii{}
