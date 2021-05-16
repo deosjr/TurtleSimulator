@@ -25,17 +25,17 @@ func Towerfunc(dummy blocks.Blocktype) turtle.Program {
 }
 
 // helper funcs, should later on also include selecting from inv if possible
-func place(t turtle.Turtle, bt blocks.Blocktype) {
+func place(t turtle.Turtle, bt blocks.Blocktype) bool {
     t.SetInventory(bt)
-    t.Place()
+    return t.Place()
 }
-func placeUp(t turtle.Turtle, bt blocks.Blocktype) {
+func placeUp(t turtle.Turtle, bt blocks.Blocktype) bool {
     t.SetInventory(bt)
-    t.PlaceUp()
+    return t.PlaceUp()
 }
-func placeDown(t turtle.Turtle, bt blocks.Blocktype) {
+func placeDown(t turtle.Turtle, bt blocks.Blocktype) bool {
     t.SetInventory(bt)
-    t.PlaceDown()
+    return t.PlaceDown()
 }
 
 func buildTowerFace(t turtle.Turtle, faceNum int, dummy blocks.Blocktype) {

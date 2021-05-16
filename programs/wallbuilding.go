@@ -26,14 +26,12 @@ func sidestepLeft(t turtle.Turtle) {
     t.TurnRight()
 }
 
-func WallCorner() turtle.Program {
+func Outerwall(n int) turtle.Program {
     return func(t turtle.Turtle) {
-        for i := 0; i < 4; i++ {
-            Wallbuildfunc()(t)
-            t.Forward()
-            t.TurnLeft()
-            t.Back()
-        }
+	    Walls(n)(t)
+        t.Forward()
+        t.TurnLeft()
+        t.Back()
         t.TurnRight()
         t.Back()
         t.TurnRight()
@@ -44,6 +42,14 @@ func WallCorner() turtle.Program {
         t.TurnLeft()
         // right where we started, in place to build the upper part
         Towerfunc(blocks.Stone)(t)
+        // upperwall starts at _right_ lower corner of a tower
+        t.TurnRight()
+        t.Forward()
+        t.Forward()
+        t.Forward()
+        t.Forward()
+        t.TurnLeft()
+        Upperwallfunc()(t)
     }
 }
 

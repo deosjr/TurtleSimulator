@@ -36,7 +36,7 @@ func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
     turtlePos := t.GetPos()
     turtleHeading := t.GetHeading()
 
-    for t.IsRunning() {
+    for w.IsRunning() {
 	    // only render if world has changed since last tick
         // todo: change in turtle position vs adding/removing blocks should
         // result in different optimisations (rebuilding bvh or not, for example)
@@ -262,7 +262,8 @@ func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 	r.scene.Precompute()
 
     if !r.followTurtle {
-	    from, to := m.Vector{0, 15, -5}, m.Vector{0, 0, 10}
+	    from, to := m.Vector{10, 15, -5}, m.Vector{0, 0, 10}
+	    //from, to := m.Vector{5, 8, -5}, m.Vector{5, 8, 10}
 	    r.camera.LookAt(from, to, m.Vector{0, 1, 0})
     } else {
 	    to := turtlepos

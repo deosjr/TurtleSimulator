@@ -47,6 +47,15 @@ func (w *World) Start() {
     }
 }
 
+func (w *World) IsRunning() bool {
+    for _, t := range w.Turtles {
+        if t.IsRunning() {
+            return true
+        }
+    }
+    return false
+}
+
 func (w *World) NumBlocks() int {
     return len(w.grid)
 }
