@@ -66,7 +66,7 @@ func buildTowerFace(t turtle.Turtle, faceNum int, dummy blocks.Blocktype) {
 
     t.TurnLeft()
     t.Back()
-    for i, bt := range []blocks.Blocktype{blocks.Brick, blocks.Planks, blocks.Planks, blocks.Planks, blocks.Brick, blocks.Slab} {
+    for i, bt := range []blocks.Blocktype{blocks.Brick, blocks.Planks, blocks.Planks, blocks.Planks, blocks.Brick, blocks.BrickSlab} {
         if i > 0 {
             t.Up()
         }
@@ -86,7 +86,7 @@ func buildTowerFace(t turtle.Turtle, faceNum int, dummy blocks.Blocktype) {
         place(t, bt)
     }
 	sidestepRight(t)
-	place(t, blocks.Slab)
+	place(t, blocks.BrickSlab)
     for i:=0;i<3;i++ {
         t.Up()
     }
@@ -100,7 +100,7 @@ func buildTowerFace(t turtle.Turtle, faceNum int, dummy blocks.Blocktype) {
 	place(t, blocks.Stairs)
 	t.TurnLeft()
 	t.Back()
-	place(t, blocks.Slab)
+	place(t, blocks.BrickSlab)
 	sidestepRight(t)
 	t.Down()
     for i:=0;i<3;i++ {
@@ -111,7 +111,7 @@ func buildTowerFace(t turtle.Turtle, faceNum int, dummy blocks.Blocktype) {
     t.Up()
 	sidestepLeft(t)
 	t.Forward()
-	placeUp(t, blocks.Slab)
+	placeUp(t, blocks.BrickSlab)
 	t.Forward()
 	t.Down()
 	placeDown(t, blocks.Stone)

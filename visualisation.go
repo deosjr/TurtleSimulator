@@ -223,7 +223,7 @@ func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 100, 20)))
 		case blocks.Brick:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
-		case blocks.Slab:
+		case blocks.CobbleSlab, blocks.BrickSlab: // TODO switch colors between them
 		    transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.25, float32(k.Y) + 0.5})
             if v.(blocks.BaseBlock).Flipped {
 		        transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.75, float32(k.Y) + 0.5})

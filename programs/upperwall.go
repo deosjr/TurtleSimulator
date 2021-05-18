@@ -10,6 +10,18 @@ func turnaround(t turtle.Turtle) {
     t.TurnLeft()
 }
 
+func uturnLeft(t turtle.Turtle) {
+    t.TurnLeft()
+    t.Forward()
+    t.TurnLeft()
+}
+
+func uturnRight(t turtle.Turtle) {
+    t.TurnRight()
+    t.Forward()
+    t.TurnRight()
+}
+
 func placeFringe(t turtle.Turtle) {
     endReached := false
 	for !endReached {
@@ -21,13 +33,13 @@ func placeFringe(t turtle.Turtle) {
 		t.Back()
 		place(t, blocks.Stairs)
 		t.Up()
-		placeDown(t, blocks.Slab)
+		placeDown(t, blocks.BrickSlab)
 		t.Forward()
 		if !endReached {
 			t.Forward()
 			t.Forward()
 			turnaround(t)
-			place(t, blocks.Slab)
+			place(t, blocks.BrickSlab)
 			t.Down()
 		}
 	}

@@ -34,7 +34,8 @@ const (
     Log
     Planks
     Brick
-    Slab
+    CobbleSlab
+    BrickSlab
 )
 
 func GetBlock(t Blocktype) Block {

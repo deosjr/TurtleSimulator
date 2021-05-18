@@ -186,14 +186,14 @@ func (t *turtle) place(p coords.Pos) bool {
         }
         toplace = blocks.BaseBlock{Type: blocks.Stairs, Heading: heading, Flipped: flipped}
     }
-    if t.inventory == blocks.Slab {
+    if t.inventory == blocks.CobbleSlab || t.inventory == blocks.BrickSlab {
         flipped := false
         if t.up() == p {
             if _, upok := t.world.Read(p.Up()); upok {
                 flipped = true
             }
         }
-        toplace = blocks.BaseBlock{Type: blocks.Slab, Flipped: flipped}
+        toplace = blocks.BaseBlock{Type: t.inventory, Flipped: flipped}
     }
 	t.world.Write(p, toplace)
 	return true
