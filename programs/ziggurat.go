@@ -1,8 +1,8 @@
 package programs
 
 import (
-    "github.com/deosjr/TurtleSimulator/blocks"
-    "github.com/deosjr/TurtleSimulator/turtle"
+	"github.com/deosjr/TurtleSimulator/blocks"
+	"github.com/deosjr/TurtleSimulator/turtle"
 )
 
 // builds the ziggurat from imgur.com/a/NeywO
@@ -10,39 +10,40 @@ import (
 
 // intended to be built by 4 turtles simultaneously
 func Ziggurat() turtle.Program {
-    return func(t turtle.Turtle) {
-        ZigguratPhase1()(t)
-        ZigguratPhase2()(t)
-    }
+	return func(t turtle.Turtle) {
+		ZigguratPhase1()(t)
+		ZigguratPhase2()(t)
+		ZigguratPhase3()(t)
+	}
 }
 
 func stonesTwoLayers(t turtle.Turtle, n int) {
-    for i:=0; i<n-1; i++ {
-        t.Back()
-        place(t, blocks.Stone)
-        placeDown(t, blocks.Stone)
-    }
+	for i := 0; i < n-1; i++ {
+		t.Back()
+		place(t, blocks.Stone)
+		placeDown(t, blocks.Stone)
+	}
 }
 
 func placeStones(t turtle.Turtle, n int) {
-    for i:=0; i<n-1; i++ {
+	for i := 0; i < n-1; i++ {
 		placeDown(t, blocks.Stone)
 		t.Forward()
-    }
+	}
 	placeDown(t, blocks.Stone)
 }
 
 // move back while laying front, down AND up
 func threeInOne(t turtle.Turtle, n, mod int) {
-    for i:=mod; i<n+mod; i++ {
+	for i := mod; i < n+mod; i++ {
 		t.Back()
-		if i%2==0 {
+		if i%2 == 0 {
 			placeDown(t, blocks.Planks)
 		} else {
 			placeDown(t, blocks.Stone)
 		}
 		place(t, blocks.Planks)
-		if i%4==0 {
+		if i%4 == 0 {
 			placeUp(t, blocks.Brick)
 		} else {
 			placeUp(t, blocks.BrickSlab)
@@ -51,56 +52,56 @@ func threeInOne(t turtle.Turtle, n, mod int) {
 }
 
 func ZigguratPhase1() turtle.Program {
-    return func(t turtle.Turtle) {
-        t.Forward()
-	    t.Up()
-	    t.TurnRight()
-	    placeDown(t, blocks.Stone)
-	    stonesTwoLayers(t, 37)
-	    t.TurnRight()
-	    stonesTwoLayers(t, 8)
-	    t.Up()
-	    placeDown(t, blocks.Stone)
-	    t.Up()
-	    turnaround(t)
-	    placeDown(t, blocks.Stone)
-	    placeUp(t, blocks.BrickSlab)
-	    threeInOne(t, 7, 1)
-	    t.TurnLeft()
-	    threeInOne(t, 36, 0)
-	    t.TurnLeft()
-	    t.Back()
-	    place(t, blocks.Planks)
-	    // now place 4 rows of stone
-	    t.Up()
-	    t.TurnRight()
-	    placeStones(t, 36)
-	    uturnRight(t)
-	    placeStones(t, 36)
-	    uturnLeft(t)
-	    placeStones(t, 36)
-	    uturnRight(t)
-	    placeStones(t, 36)
-	    turnaround(t)
-	    // place wall foundation
-	    t.Up()
-	    for i:=0; i<6; i++ {
-		    placeDown(t, blocks.Stone)
-		    t.Forward()
-		    t.Forward()
-		    t.Forward()
-		    t.Forward()
-	    }
-	    placeStones(t, 9)
-    }
+	return func(t turtle.Turtle) {
+		t.Forward()
+		t.Up()
+		t.TurnRight()
+		placeDown(t, blocks.Stone)
+		stonesTwoLayers(t, 37)
+		t.TurnRight()
+		stonesTwoLayers(t, 8)
+		t.Up()
+		placeDown(t, blocks.Stone)
+		t.Up()
+		turnaround(t)
+		placeDown(t, blocks.Stone)
+		placeUp(t, blocks.BrickSlab)
+		threeInOne(t, 7, 1)
+		t.TurnLeft()
+		threeInOne(t, 36, 0)
+		t.TurnLeft()
+		t.Back()
+		place(t, blocks.Planks)
+		// now place 4 rows of stone
+		t.Up()
+		t.TurnRight()
+		placeStones(t, 36)
+		uturnRight(t)
+		placeStones(t, 36)
+		uturnLeft(t)
+		placeStones(t, 36)
+		uturnRight(t)
+		placeStones(t, 36)
+		turnaround(t)
+		// place wall foundation
+		t.Up()
+		for i := 0; i < 6; i++ {
+			placeDown(t, blocks.Stone)
+			t.Forward()
+			t.Forward()
+			t.Forward()
+			t.Forward()
+		}
+		placeStones(t, 9)
+	}
 }
 
 // go down until detectdown, build stone back up until planks in front,
 // then top it off with n stacks of planks + brick
 func pillar(t turtle.Turtle, n int) {
-    for !t.DetectDown() {
-        t.Down()
-    }
+	for !t.DetectDown() {
+		t.Down()
+	}
 	planksDetected := false
 	for !planksDetected {
 		data, ok := t.Inspect()
@@ -111,7 +112,7 @@ func pillar(t turtle.Turtle, n int) {
 			placeDown(t, blocks.Stone)
 		}
 	}
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		t.Up()
 		placeDown(t, blocks.Planks)
 		t.Up()
@@ -121,14 +122,14 @@ func pillar(t turtle.Turtle, n int) {
 
 func build3x4block(t turtle.Turtle) {
 	placeDown(t, blocks.Stone)
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		t.Back()
 		placeDown(t, blocks.Stone)
 	}
 	t.Up()
 	t.Forward()
 	t.Forward()
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		placeDown(t, blocks.Stone)
 		placeUp(t, blocks.BrickSlab)
 		t.Back()
@@ -137,9 +138,9 @@ func build3x4block(t turtle.Turtle) {
 }
 
 func buildPillars(t turtle.Turtle, n int) {
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		t.Back()
-	    for j:=0; j<3; j++ {
+		for j := 0; j < 3; j++ {
 			t.Down()
 		}
 		build3x4block(t)
@@ -160,7 +161,7 @@ type endFunc func(t turtle.Turtle) bool
 func windows(t turtle.Turtle, bottomFunc bottomFunc, endFunc endFunc, diffColor int) {
 	t.Forward()
 	sidestepRight(t)
-    for i:=0; i<5; i++ {
+	for i := 0; i < 5; i++ {
 		t.Down()
 	}
 	t.TurnRight()
@@ -174,7 +175,7 @@ func windows(t turtle.Turtle, bottomFunc bottomFunc, endFunc endFunc, diffColor 
 	for moreWindows {
 		stairsPlaced := false
 		windowMat := blocks.Stone
-		if diffColor > 0 && windowsPlaced == (diffColor - 1) {
+		if diffColor > 0 && windowsPlaced == (diffColor-1) {
 			windowMat = blocks.Planks
 		}
 		i := 0
@@ -194,13 +195,13 @@ func windows(t turtle.Turtle, bottomFunc bottomFunc, endFunc endFunc, diffColor 
 			} else {
 				sidestepRight(t)
 			}
-			if i%2==0 {
+			if i%2 == 0 {
 				place(t, windowMat)
 			} else {
 				place(t, blocks.Brick)
 			}
 			t.TurnRight()
-		    t.Forward()
+			t.Forward()
 			if !stairsPlaced {
 				placeUp(t, blocks.Stairs)
 				stairsPlaced = true
@@ -221,7 +222,7 @@ func bottomFunc1(t turtle.Turtle, windowMat blocks.Blocktype) {
 	// place the last three blocks and find next window
 	t.Forward()
 	t.TurnRight()
-    for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		t.Back()
 		place(t, windowMat)
 	}
@@ -230,15 +231,15 @@ func bottomFunc1(t turtle.Turtle, windowMat blocks.Blocktype) {
 }
 
 func endFunc1(t turtle.Turtle) bool {
-// turtle is looking through next window if any
+	// turtle is looking through next window if any
 	if t.Detect() {
 		return false
 	}
 	t.Forward()
 	turnaround(t)
-    for !t.DetectUp() {
-        t.Up()
-    }
+	for !t.DetectUp() {
+		t.Up()
+	}
 	return true
 }
 
@@ -286,7 +287,7 @@ func buildStairs(t turtle.Turtle) {
 		backupback(t)
 
 		t.TurnLeft()
-        data, ok := t.Inspect()
+		data, ok := t.Inspect()
 		if ok && data.GetType() == blocks.Planks {
 			backupback(t)
 			sidestepRight(t)
@@ -297,11 +298,12 @@ func buildStairs(t turtle.Turtle) {
 		}
 	}
 }
+
 // end stairs
 
 func findBottomNextCorner(t turtle.Turtle) {
 	t.TurnLeft()
-    for i:=0; i<4; i++ {
+	for i := 0; i < 4; i++ {
 		t.Forward()
 	}
 	t.TurnRight()
@@ -323,16 +325,16 @@ func buildUpperWalls(t turtle.Turtle, n int) {
 		placeDown(t, blocks.Stone)
 	}
 
-	for i:=0;i<(2*n-1);i++ {
+	for i := 0; i < (2*n - 1); i++ {
 		slabblock()
 		t.Back()
 	}
 	slabblock()
 
 	t.Up()
-    for !t.DetectDown() {
-        t.Forward()
-    }
+	for !t.DetectDown() {
+		t.Forward()
+	}
 	// start wall up
 	buildPillars(t, n)
 
@@ -340,18 +342,18 @@ func buildUpperWalls(t turtle.Turtle, n int) {
 		t.Forward()
 		t.TurnLeft()
 		t.Forward()
-        for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			place(t, windowMat)
 			t.Down()
 		}
 		place(t, windowMat)
 		t.Back()
 		place(t, windowMat)
-        for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			t.Up()
 			place(t, windowMat)
 		}
-        for i:=0; i<3; i++ {
+		for i := 0; i < 3; i++ {
 			t.Down()
 			placeUp(t, windowMat)
 		}
@@ -376,19 +378,20 @@ func buildUpperWalls(t turtle.Turtle, n int) {
 		t.TurnLeft()
 		t.Forward()
 		turnaround(t)
-        for !t.DetectUp() {
+		for !t.DetectUp() {
 			t.Up()
-        }
+		}
 		return true
 	}
 
 	windows(t, bottomFunc2, endFunc2, 0)
 
 	sidestepRight(t)
-    for t.Detect() {
+	t.Up()
+	for t.Detect() {
 		t.Up()
-    }
-    for i:=0; i<3; i++ {
+	}
+	for i := 0; i < 3; i++ {
 		t.Up()
 	}
 	t.Forward()
@@ -397,26 +400,228 @@ func buildUpperWalls(t turtle.Turtle, n int) {
 }
 
 func ZigguratPhase2() turtle.Program {
-    return func(t turtle.Turtle) {
-        placeUp(t, blocks.Brick)
-	    for i:=0; i<3; i++ {
-		    t.Back()
-		    placeUp(t, blocks.BrickSlab)
-		    place(t, blocks.Planks)
-	    }
-	    t.Back()
-	    place(t, blocks.Planks)
+	return func(t turtle.Turtle) {
+		placeUp(t, blocks.Brick)
+		for i := 0; i < 3; i++ {
+			t.Back()
+			placeUp(t, blocks.BrickSlab)
+			place(t, blocks.Planks)
+		}
+		t.Back()
+		place(t, blocks.Planks)
 
-	    pillar(t, 2)
-	    buildPillars(t, 7)
-	    windows(t, bottomFunc1, endFunc1, 4)
-	    t.Back()
-	    t.Back()
-	    t.TurnLeft()
-        for i:=0; i<10; i++ {
-            t.Back()
-        }
-	    buildStairs(t)
-	    buildUpperWalls(t, 7)
-    }
+		pillar(t, 2)
+		buildPillars(t, 7)
+		windows(t, bottomFunc1, endFunc1, 4)
+		t.Back()
+		t.Back()
+		t.TurnLeft()
+		for i := 0; i < 10; i++ {
+			t.Back()
+		}
+		buildStairs(t)
+		buildUpperWalls(t, 7)
+	}
+}
+
+func upperpillar(t turtle.Turtle) {
+	for _, b := range []blocks.Blocktype{blocks.Planks, blocks.Planks, blocks.Brick, blocks.Stone} {
+		t.Up()
+		placeDown(t, b)
+	}
+	t.Back()
+	place(t, blocks.Stone)
+	t.Down()
+	placeUp(t, blocks.Stone)
+	t.Down()
+	placeUp(t, blocks.Stairs)
+	turnaround(t)
+	t.Forward()
+	t.Up()
+	placeUp(t, blocks.Stone)
+	t.Forward()
+	placeUp(t, blocks.Stone)
+	t.Down()
+	placeUp(t, blocks.Stairs)
+}
+
+func upper3x3(t turtle.Turtle) {
+	for i := 0; i < 3; i++ {
+		if i%2 == 1 {
+			placeDown(t, blocks.Planks)
+		} else {
+			placeDown(t, blocks.Stone)
+		}
+		placeUp(t, blocks.BrickSlab)
+		t.Back()
+		place(t, blocks.Planks)
+	}
+}
+
+func placeTorchRow(t turtle.Turtle, n int) {
+	for i := 0; i < n; i++ {
+		t.Back()
+		place(t, blocks.Torch)
+		for !t.DetectDown() {
+			t.Down()
+		}
+		for j := 0; j < 3; j++ {
+			t.Back()
+		}
+	}
+}
+
+func placeTorchCrossFloor(t turtle.Turtle) {
+	t.Back()
+	place(t, blocks.Torch)
+	for i := 0; i < 3; i++ {
+		t.Back()
+	}
+	for !t.DetectDown() {
+		t.Down()
+	}
+}
+
+func ZigguratPhase3() turtle.Program {
+	return func(t turtle.Turtle) {
+		t.TurnLeft()
+		buildStairs(t)
+		buildUpperWalls(t, 5)
+		t.TurnLeft()
+		buildStairs(t)
+		findBottomNextCorner(t)
+		t.Up()
+		placeDown(t, blocks.Stone)
+		t.Up()
+		for i := 0; i < 11; i++ {
+			placeDown(t, blocks.Stone)
+			placeUp(t, blocks.Stone)
+			t.Back()
+			place(t, blocks.Stone)
+		}
+		for i := 0; i < 3; i++ {
+			placeDown(t, blocks.Stone)
+			t.Up()
+		}
+		turnaround(t)
+		for i := 0; i < 11; i++ {
+			placeDown(t, blocks.Stone)
+			if i%4 == 0 {
+				placeUp(t, blocks.Brick)
+			} else {
+				placeUp(t, blocks.BrickSlab)
+			}
+			t.Back()
+			place(t, blocks.Planks)
+		}
+		placeDown(t, blocks.Stone)
+		placeUp(t, blocks.BrickSlab)
+		t.TurnRight()
+		t.Back()
+		place(t, blocks.Planks)
+		t.Up()
+		t.Back()
+		t.Back()
+		t.TurnLeft()
+		build3xNfloor(t, 9)
+		t.Forward()
+		t.TurnLeft()
+		build3xNfloor(t, 5)
+		t.TurnLeft()
+		t.Forward()
+		place(t, blocks.BrickSlab)
+		t.Back()
+		place(t, blocks.Brick)
+
+		t.TurnLeft()
+		t.Up()
+		for i := 0; i < 5; i++ {
+			t.Forward()
+		}
+		t.TurnLeft()
+		upperpillar(t)
+		t.Forward()
+		t.Down()
+		t.Down()
+		turnaround(t)
+		upperpillar(t)
+		t.Forward()
+		t.Down()
+		t.Down()
+		t.TurnLeft()
+		upperpillar(t)
+		t.TurnRight()
+		t.Forward()
+		for i := 0; i < 4; i++ {
+			t.Up()
+		}
+		t.Back()
+		t.TurnLeft()
+
+		upper3x3(t)
+		t.TurnLeft()
+		placeDown(t, blocks.Planks)
+		placeUp(t, blocks.Brick)
+		t.Back()
+		place(t, blocks.Planks)
+		upper3x3(t)
+		placeDown(t, blocks.Planks)
+		placeUp(t, blocks.Brick)
+		t.Back()
+		place(t, blocks.Planks)
+		upper3x3(t)
+		placeDown(t, blocks.Planks)
+		placeUp(t, blocks.Brick)
+		t.TurnLeft()
+		t.Back()
+		place(t, blocks.Planks)
+		t.Up()
+		t.TurnRight()
+		build3xNfloor(t, 8)
+		turnaround(t)
+		for i := 0; i < 4; i++ {
+			t.Forward()
+		}
+		sidestepLeft(t)
+		placeDown(t, blocks.Planks)
+		for i := 0; i < 3; i++ {
+			t.Forward()
+			placeDown(t, blocks.Planks)
+		}
+		turnaround(t)
+		t.Up()
+		placeDown(t, blocks.Brick)
+		for i := 0; i < 3; i++ {
+			t.Forward()
+			placeDown(t, blocks.BrickSlab)
+		}
+
+		for i := 0; i < 3; i++ {
+			t.Back()
+		}
+		t.TurnRight()
+		placeTorchCrossFloor(t)
+		t.TurnRight()
+		placeTorchRow(t, 3)
+		t.TurnRight()
+		placeTorchRow(t, 5)
+		t.TurnRight()
+		placeTorchRow(t, 7)
+		t.TurnRight()
+		placeTorchRow(t, 8)
+		placeTorchCrossFloor(t)
+		t.TurnLeft()
+		placeTorchRow(t, 1)
+		t.TurnLeft()
+		placeTorchRow(t, 5)
+		// in case we pass over entry stairs
+		placeTorchCrossFloor(t)
+		placeTorchRow(t, 3)
+		t.TurnRight()
+		t.Back()
+		place(t, blocks.Torch)
+		for i := 0; i < 5; i++ {
+			t.Down()
+		}
+	}
 }

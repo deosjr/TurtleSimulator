@@ -1,10 +1,10 @@
 package turtle
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/deosjr/TurtleSimulator/blocks"
-    "github.com/deosjr/TurtleSimulator/coords"
+	"github.com/deosjr/TurtleSimulator/blocks"
+	"github.com/deosjr/TurtleSimulator/coords"
 )
 
 // use interface to mimic how we can't access everything in CC:Tweaked API
@@ -22,38 +22,38 @@ type Turtle interface {
 	Place() bool
 	PlaceUp() bool
 	PlaceDown() bool
-    Dig() bool
-    Inspect() (blocks.Block, bool)
+	Dig() bool
+	Inspect() (blocks.Block, bool)
 
 	// my own functions
 	SetProgram(Program)
 	Run()
 	IsRunning() bool
 	String() string
-    SetInventory(blocks.Blocktype)
-    GetPos() coords.Pos
-    GetHeading() coords.Pos
-    Tick()
-    Tack()
+	SetInventory(blocks.Blocktype)
+	GetPos() coords.Pos
+	GetHeading() coords.Pos
+	Tick()
+	Tack()
 }
 
 type turtle struct {
-    blocks.BaseBlock
-	pos     coords.Pos
+	blocks.BaseBlock
+	pos coords.Pos
 	//heading coords.Pos
 	world   *World
 	program Program
 	tick    chan bool
 	ack     chan bool
 	running bool
-    // hack for now: dont want to build inventory management yet
-    inventory blocks.Blocktype
+	// hack for now: dont want to build inventory management yet
+	inventory blocks.Blocktype
 }
 
 type Program func(Turtle)
 
 func (t *turtle) GetPos() coords.Pos {
-    return t.pos
+	return t.pos
 }
 
 func (t *turtle) TurnLeft() {
@@ -70,13 +70,13 @@ func (t *turtle) TurnRight() {
 
 // TODO: three lock/unlocks of mutex, can be optimised
 func (t *turtle) move(p coords.Pos) error {
-    _, ok := t.world.Read(p)
+	_, ok := t.world.Read(p)
 	if ok {
 		return fmt.Errorf("block in position")
 	}
-    t.world.Delete(t.pos)
+	t.world.Delete(t.pos)
 	t.pos = p
-    t.world.Write(p, t)
+	t.world.Write(p, t)
 	return nil
 }
 
@@ -143,11 +143,11 @@ func (t *turtle) Dig() bool {
 
 func (t *turtle) dig(p coords.Pos) bool {
 	_, ok := t.world.Read(p)
-    if !ok {
-        return false
-    }
-    t.world.Delete(p)
-    return true
+	if !ok {
+		return false
+	}
+	t.world.Delete(p)
+	return true
 }
 
 func (t *turtle) Place() bool {
@@ -176,26 +176,26 @@ func (t *turtle) place(p coords.Pos) bool {
 	if ok {
 		return false
 	}
-    toplace := blocks.GetBlock(t.inventory)
-    if t.inventory == blocks.Stairs {
-	    heading := coords.Pos{t.Heading.Y * -1, t.Heading.X, 0}
-        flipped := false
-        if t.up() == p {
-            if _, upok := t.world.Read(p.Up()); upok {
-                flipped = true
-            }
-        }
-        toplace = blocks.BaseBlock{Type: blocks.Stairs, Heading: heading, Flipped: flipped}
-    }
-    if t.inventory == blocks.CobbleSlab || t.inventory == blocks.BrickSlab {
-        flipped := false
-        if t.up() == p {
-            if _, upok := t.world.Read(p.Up()); upok {
-                flipped = true
-            }
-        }
-        toplace = blocks.BaseBlock{Type: t.inventory, Flipped: flipped}
-    }
+	toplace := blocks.GetBlock(t.inventory)
+	if t.inventory == blocks.Stairs {
+		heading := coords.Pos{t.Heading.Y * -1, t.Heading.X, 0}
+		flipped := false
+		if t.up() == p {
+			if _, upok := t.world.Read(p.Up()); upok {
+				flipped = true
+			}
+		}
+		toplace = blocks.BaseBlock{Type: blocks.Stairs, Heading: heading, Flipped: flipped}
+	}
+	if t.inventory == blocks.CobbleSlab || t.inventory == blocks.BrickSlab {
+		flipped := false
+		if t.up() == p {
+			if _, upok := t.world.Read(p.Up()); upok {
+				flipped = true
+			}
+		}
+		toplace = blocks.BaseBlock{Type: t.inventory, Flipped: flipped}
+	}
 	t.world.Write(p, toplace)
 	return true
 }
@@ -208,11 +208,11 @@ func (t *turtle) Inspect() (blocks.Block, bool) {
 }
 
 func (t *turtle) inspect(p coords.Pos) (blocks.Block, bool) {
-    return t.world.Read(p)
+	return t.world.Read(p)
 }
 
 func (t *turtle) SetInventory(bt blocks.Blocktype) {
-    t.inventory = bt
+	t.inventory = bt
 }
 
 func (t *turtle) forward() coords.Pos {
@@ -224,11 +224,11 @@ func (t *turtle) back() coords.Pos {
 }
 
 func (t *turtle) up() coords.Pos {
-    return t.pos.Up()
+	return t.pos.Up()
 }
 
 func (t *turtle) down() coords.Pos {
-    return t.pos.Down()
+	return t.pos.Down()
 }
 
 func (t *turtle) SetProgram(f Program) {
@@ -236,13 +236,16 @@ func (t *turtle) SetProgram(f Program) {
 }
 
 func (t *turtle) Tick() {
-    t.tick <- true
+	t.tick <- true
 }
 func (t *turtle) Tack() {
-    <-t.ack
+	<-t.ack
 }
 
 func (t *turtle) Run() {
+	if t.program == nil {
+		return
+	}
 	t.running = true
 	t.program(t)
 	t.running = false
@@ -270,15 +273,15 @@ func NewTurtle(p coords.Pos, w *World, heading coords.Pos) Turtle {
 	tick := make(chan bool, 1)
 	ack := make(chan bool, 1)
 	t := &turtle{
-        BaseBlock: blocks.BaseBlock{
-		    Heading: heading,
-            Type: blocks.Turtle,
-        },
-		pos:     p,
-		world:   w,
-		tick:    tick,
-		ack:     ack,
+		BaseBlock: blocks.BaseBlock{
+			Heading: heading,
+			Type:    blocks.Turtle,
+		},
+		pos:   p,
+		world: w,
+		tick:  tick,
+		ack:   ack,
 	}
-    w.Write(p, t)
+	w.Write(p, t)
 	return t
 }
