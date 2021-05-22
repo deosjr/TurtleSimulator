@@ -23,6 +23,7 @@ type Turtle interface {
 	PlaceUp() bool
 	PlaceDown() bool
     Dig() bool
+    Inspect() (blocks.Block, bool)
 
 	// my own functions
 	SetProgram(Program)
@@ -197,6 +198,17 @@ func (t *turtle) place(p coords.Pos) bool {
     }
 	t.world.Write(p, toplace)
 	return true
+}
+
+func (t *turtle) Inspect() (blocks.Block, bool) {
+	<-t.tick
+	b, ok := t.inspect(t.forward())
+	t.ack <- true
+	return b, ok
+}
+
+func (t *turtle) inspect(p coords.Pos) (blocks.Block, bool) {
+    return t.world.Read(p)
 }
 
 func (t *turtle) SetInventory(bt blocks.Blocktype) {
