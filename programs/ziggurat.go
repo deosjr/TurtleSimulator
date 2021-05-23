@@ -35,7 +35,7 @@ func placeStones(t turtle.Turtle, n int) {
 
 // move back while laying front, down AND up
 func threeInOne(t turtle.Turtle, n, mod int) {
-	for i := mod; i < n+mod; i++ {
+	for i := mod+1; i < n+mod+1; i++ {
 		t.Back()
 		if i%2 == 0 {
 			placeDown(t, blocks.Planks)
