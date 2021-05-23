@@ -50,7 +50,7 @@ func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
 				v.VisualiseUnchanged(w)
 			}
 			w.Tick()
-			fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
+			//fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
 			continue
 		}
 
@@ -69,7 +69,7 @@ func visualise(v visualiser, w *turtle.World, showEntireRun bool) {
 		// send tick update to turtles and await yield
 		// todo: abort if turtle takes too long
 		w.Tick()
-		fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
+		//fmt.Println(turtlePos, coords.HeadingString(turtleHeading))
 	}
 	if showEntireRun && turtlePos != t.GetPos() {
 		v.VisualiseMove(w, turtlePos, t.GetPos())
@@ -177,90 +177,17 @@ func (r *raytracer) Visualise(w *turtle.World) {
 
 func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 
-	r.scene.Objects = []m.Object{}
-
-	// centering around the origin allows for easy rotations
-	cube := m.NewAABB(m.Vector{-0.5, -0.5, -0.5}, m.Vector{0.5, 0.5, 0.5})
-	stairpoints := []m.Vector{
-		{-0.5, -0.5, -0.5},
-		{0.5, -0.5, -0.5},
-		{0.5, 0, -0.5},
-		{0, 0, -0.5},
-		{0, 0.5, -0.5},
-		{-0.5, 0.5, -0.5},
-	}
-
-	var turtlepos m.Vector
-
-	for k, v := range w.Grid() {
-		// z is up in turtle world, y is up in raytracing world
-		// 0.5 is added to map to 0,0,0 through 1,1,1
-		transform := m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.5, float32(k.Y) + 0.5})
-		var mat m.Material
-		switch v.GetType() {
-		case blocks.Turtle:
-			transform = m.Translate(m.Vector{float32(-k.X) + 0.5 + dx, float32(k.Z) + 0.5 + dz, float32(k.Y) + 0.5 + dy})
-			switch v.GetHeading() {
-			//case pos{0, 1, 0}: dont rotate when facing north
-			case coords.East:
-				transform = transform.Mul(m.RotateY(math.Pi / 2.0))
-			case coords.South:
-				transform = transform.Mul(m.RotateY(math.Pi))
-			case coords.West:
-				transform = transform.Mul(m.RotateY(-math.Pi / 2.0))
-			}
-			shared := m.NewSharedObject(getturtleobj(), transform)
-			r.scene.Add(shared)
-			turtlepos = m.Vector{float32(-k.X) + 0.5 + dx, float32(k.Z) + 0.5 + dz, float32(k.Y) + 0.5 + dy}
-			continue
-		case blocks.Grass:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 255, 0)))
-		case blocks.Stone:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
-		case blocks.Log:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(90, 60, 10)))
-		case blocks.Planks:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 100, 20)))
-		case blocks.Brick:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
-		case blocks.Torch:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(255, 170, 0)))
-		case blocks.CobbleSlab, blocks.BrickSlab: // TODO switch colors between them
-			transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.25, float32(k.Y) + 0.5})
-			if v.(blocks.BaseBlock).Flipped {
-				transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.75, float32(k.Y) + 0.5})
-			}
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
-			slab := m.NewAABB(m.Vector{-0.5, -0.25, -0.5}, m.Vector{0.5, 0.25, 0.5})
-			block := m.NewCuboid(slab, mat).Tesselate()
-			shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
-			r.scene.Add(shared)
-			continue
-		case blocks.Stairs:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
-			stairsobj := gen.ExtrudeSolidFace(stairpoints, m.Vector{0, 0, 1}, mat)
-			switch v.GetHeading() {
-			//case pos{0, 1, 0}: dont rotate when facing north
-			case coords.East:
-				transform = transform.Mul(m.RotateY(math.Pi / 2.0))
-			case coords.South:
-				transform = transform.Mul(m.RotateY(math.Pi))
-			case coords.West:
-				transform = transform.Mul(m.RotateY(-math.Pi / 2.0))
-			}
-			if v.(blocks.BaseBlock).Flipped {
-				transform = transform.Mul(m.RotateX(math.Pi))
-			}
-			shared := m.NewSharedObject(stairsobj, transform)
-			r.scene.Add(shared)
-			continue
-		default:
-			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 0, 255)))
-		}
-		block := m.NewCuboid(cube, mat).Tesselate()
-		shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
-		r.scene.Add(shared)
-	}
+    r.scene.Objects = []m.Object{}
+    objs := objectsFromWorld(w)
+    // TODO: copied from GrayTScenes
+    //fmt.Println(SaveObj(m.NewComplexObject(objs)))
+	for _, o := range objs {
+        r.scene.Add(o)
+    }
+    tobjs, turtlepos := turtlesFromWorld(w, dx, dy, dz)
+    for _, to := range tobjs {
+        r.scene.Add(to)
+    }
 	r.scene.Precompute()
 
 	if !r.followTurtle {
@@ -284,6 +211,108 @@ func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 	r.film = render.Render(params)
 	render.AddToAVI(r.avi, r.film)
 	r.film.SaveAsPNG("turtle.png")
+}
+
+// TODO: still assumes only 1 turtle in animation
+func turtlesFromWorld(w *turtle.World, dx, dy, dz float32) ([]m.Object, m.Vector) {
+    objs := []m.Object{}
+	var turtlepos m.Vector
+    for i, t := range w.Turtles {
+        p := t.GetPos()
+        if i == 0 {
+			turtlepos = m.Vector{float32(-p.X) + 0.5 + dx, float32(p.Z) + 0.5 + dz, float32(p.Y) + 0.5 + dy}
+        }
+		transform := m.Translate(m.Vector{float32(-p.X) + 0.5 + dx, float32(p.Z) + 0.5 + dz, float32(p.Y) + 0.5 + dy})
+		switch t.GetHeading() {
+		//case pos{0, 1, 0}: dont rotate when facing north
+		case coords.East:
+			transform = transform.Mul(m.RotateY(math.Pi / 2.0))
+		case coords.South:
+			transform = transform.Mul(m.RotateY(math.Pi))
+		case coords.West:
+			transform = transform.Mul(m.RotateY(-math.Pi / 2.0))
+		}
+		shared := m.NewSharedObject(getturtleobj(), transform)
+        objs = append(objs, shared)
+    }
+    return objs, turtlepos
+}
+
+func objectsFromWorld(w *turtle.World) []m.Object {
+    objs := []m.Object{}
+	// centering around the origin allows for easy rotations
+	cube := m.NewAABB(m.Vector{-0.5, -0.5, -0.5}, m.Vector{0.5, 0.5, 0.5})
+	stairpoints := []m.Vector{
+		{-0.5, -0.5, -0.5},
+		{0.5, -0.5, -0.5},
+		{0.5, 0, -0.5},
+		{0, 0, -0.5},
+		{0, 0.5, -0.5},
+		{-0.5, 0.5, -0.5},
+	}
+
+	for k, v := range w.Grid() {
+		// z is up in turtle world, y is up in raytracing world
+		// 0.5 is added to map to 0,0,0 through 1,1,1
+		transform := m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.5, float32(k.Y) + 0.5})
+		var mat m.Material
+		switch v.GetType() {
+		case blocks.Turtle:
+            continue
+		case blocks.Grass:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 255, 0)))
+		case blocks.Stone:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
+		case blocks.Log:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(90, 60, 10)))
+		case blocks.Planks:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 100, 20)))
+		case blocks.Brick:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
+		case blocks.Torch:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(255, 170, 0)))
+			torch := m.NewAABB(m.Vector{-0.1, -0.5, -0.1}, m.Vector{0.1, 0.5, 0.1})
+			block := m.NewCuboid(torch, mat).Tesselate()
+			shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
+            objs = append(objs, shared)
+			continue
+		case blocks.CobbleSlab, blocks.BrickSlab: // TODO switch colors between them
+			transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.25, float32(k.Y) + 0.5})
+			if v.(blocks.BaseBlock).Flipped {
+				transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.75, float32(k.Y) + 0.5})
+			}
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(190, 190, 190)))
+			slab := m.NewAABB(m.Vector{-0.5, -0.25, -0.5}, m.Vector{0.5, 0.25, 0.5})
+			block := m.NewCuboid(slab, mat).Tesselate()
+			shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
+            objs = append(objs, shared)
+			continue
+		case blocks.Stairs:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
+			stairsobj := gen.ExtrudeSolidFace(stairpoints, m.Vector{0, 0, 1}, mat)
+			switch v.GetHeading() {
+			//case pos{0, 1, 0}: dont rotate when facing north
+			case coords.East:
+				transform = transform.Mul(m.RotateY(math.Pi / 2.0))
+			case coords.South:
+				transform = transform.Mul(m.RotateY(math.Pi))
+			case coords.West:
+				transform = transform.Mul(m.RotateY(-math.Pi / 2.0))
+			}
+			if v.(blocks.BaseBlock).Flipped {
+				transform = transform.Mul(m.RotateX(math.Pi))
+			}
+			shared := m.NewSharedObject(stairsobj, transform)
+            objs = append(objs, shared)
+			continue
+		default:
+			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 0, 255)))
+		}
+		block := m.NewCuboid(cube, mat).Tesselate()
+		shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
+        objs = append(objs, shared)
+	}
+    return objs
 }
 
 func (r *raytracer) VisualiseMove(w *turtle.World, from, to coords.Pos) {
