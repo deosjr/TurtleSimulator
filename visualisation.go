@@ -177,17 +177,17 @@ func (r *raytracer) Visualise(w *turtle.World) {
 
 func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 
-    r.scene.Objects = []m.Object{}
-    objs := objectsFromWorld(w)
-    // TODO: copied from GrayTScenes
-    //fmt.Println(SaveObj(m.NewComplexObject(objs)))
+	r.scene.Objects = []m.Object{}
+	objs := objectsFromWorld(w)
+	// TODO: copied from GrayTScenes
+	//fmt.Println(SaveObj(m.NewComplexObject(objs)))
 	for _, o := range objs {
-        r.scene.Add(o)
-    }
-    tobjs, turtlepos := turtlesFromWorld(w, dx, dy, dz)
-    for _, to := range tobjs {
-        r.scene.Add(to)
-    }
+		r.scene.Add(o)
+	}
+	tobjs, turtlepos := turtlesFromWorld(w, dx, dy, dz)
+	for _, to := range tobjs {
+		r.scene.Add(to)
+	}
 	r.scene.Precompute()
 
 	if !r.followTurtle {
@@ -215,13 +215,13 @@ func (r *raytracer) visualise(w *turtle.World, dx, dy, dz float32) {
 
 // TODO: still assumes only 1 turtle in animation
 func turtlesFromWorld(w *turtle.World, dx, dy, dz float32) ([]m.Object, m.Vector) {
-    objs := []m.Object{}
+	objs := []m.Object{}
 	var turtlepos m.Vector
-    for i, t := range w.Turtles {
-        p := t.GetPos()
-        if i == 0 {
+	for i, t := range w.Turtles {
+		p := t.GetPos()
+		if i == 0 {
 			turtlepos = m.Vector{float32(-p.X) + 0.5 + dx, float32(p.Z) + 0.5 + dz, float32(p.Y) + 0.5 + dy}
-        }
+		}
 		transform := m.Translate(m.Vector{float32(-p.X) + 0.5 + dx, float32(p.Z) + 0.5 + dz, float32(p.Y) + 0.5 + dy})
 		switch t.GetHeading() {
 		//case pos{0, 1, 0}: dont rotate when facing north
@@ -233,13 +233,13 @@ func turtlesFromWorld(w *turtle.World, dx, dy, dz float32) ([]m.Object, m.Vector
 			transform = transform.Mul(m.RotateY(-math.Pi / 2.0))
 		}
 		shared := m.NewSharedObject(getturtleobj(), transform)
-        objs = append(objs, shared)
-    }
-    return objs, turtlepos
+		objs = append(objs, shared)
+	}
+	return objs, turtlepos
 }
 
 func objectsFromWorld(w *turtle.World) []m.Object {
-    objs := []m.Object{}
+	objs := []m.Object{}
 	// centering around the origin allows for easy rotations
 	cube := m.NewAABB(m.Vector{-0.5, -0.5, -0.5}, m.Vector{0.5, 0.5, 0.5})
 	stairpoints := []m.Vector{
@@ -258,7 +258,7 @@ func objectsFromWorld(w *turtle.World) []m.Object {
 		var mat m.Material
 		switch v.GetType() {
 		case blocks.Turtle:
-            continue
+			continue
 		case blocks.Grass:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 255, 0)))
 		case blocks.Stone:
@@ -274,7 +274,7 @@ func objectsFromWorld(w *turtle.World) []m.Object {
 			torch := m.NewAABB(m.Vector{-0.1, -0.5, -0.1}, m.Vector{0.1, 0.5, 0.1})
 			block := m.NewCuboid(torch, mat).Tesselate()
 			shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
-            objs = append(objs, shared)
+			objs = append(objs, shared)
 			continue
 		case blocks.CobbleSlab, blocks.BrickSlab: // TODO switch colors between them
 			transform = m.Translate(m.Vector{float32(-k.X) + 0.5, float32(k.Z) + 0.25, float32(k.Y) + 0.5})
@@ -285,7 +285,7 @@ func objectsFromWorld(w *turtle.World) []m.Object {
 			slab := m.NewAABB(m.Vector{-0.5, -0.25, -0.5}, m.Vector{0.5, 0.25, 0.5})
 			block := m.NewCuboid(slab, mat).Tesselate()
 			shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
-            objs = append(objs, shared)
+			objs = append(objs, shared)
 			continue
 		case blocks.Stairs:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(150, 150, 150)))
@@ -303,16 +303,16 @@ func objectsFromWorld(w *turtle.World) []m.Object {
 				transform = transform.Mul(m.RotateX(math.Pi))
 			}
 			shared := m.NewSharedObject(stairsobj, transform)
-            objs = append(objs, shared)
+			objs = append(objs, shared)
 			continue
 		default:
 			mat = m.NewDiffuseMaterial(m.NewConstantTexture(m.NewColor(0, 0, 255)))
 		}
 		block := m.NewCuboid(cube, mat).Tesselate()
 		shared := m.NewSharedObject(m.NewTriangleComplexObject(block), transform)
-        objs = append(objs, shared)
+		objs = append(objs, shared)
 	}
-    return objs
+	return objs
 }
 
 func (r *raytracer) VisualiseMove(w *turtle.World, from, to coords.Pos) {

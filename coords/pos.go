@@ -22,22 +22,22 @@ func (p Pos) Down() Pos {
 
 // some default headings (these are 2D or complex coords)
 var (
-    North = Pos{0, 1, 0}
-    East = Pos{1, 0, 0}
-    South = Pos{0, -1, 0}
-    West = Pos{-1, 0, 0}
+	North = Pos{0, 1, 0}
+	East  = Pos{1, 0, 0}
+	South = Pos{0, -1, 0}
+	West  = Pos{-1, 0, 0}
 )
 
 func HeadingString(p Pos) string {
-    switch p {
-    case North:
-        return "north"
-    case East:
-        return "east"
-    case South:
-        return "south"
-    case West:
-        return "west"
-    }
-    return "invalid"
+	switch p {
+	case North:
+		return "north"
+	case East:
+		return "east"
+	case South:
+		return "south"
+	case West:
+		return "west"
+	}
+	return "invalid"
 }

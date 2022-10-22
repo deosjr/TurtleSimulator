@@ -1,146 +1,133 @@
 package programs
 
 import (
-    "github.com/deosjr/TurtleSimulator/blocks"
-    "github.com/deosjr/TurtleSimulator/turtle"
+	"github.com/deosjr/TurtleSimulator/blocks"
+	"github.com/deosjr/TurtleSimulator/programs/lib"
+	"github.com/deosjr/TurtleSimulator/turtle"
 )
 
 // upper part of a tower
 // to be placed on top of a wall corner
 
 func Towerfunc(dummy blocks.Blocktype) turtle.Program {
-    return func(t turtle.Turtle) {
-        y := 0
-        for t.Detect() {
-            t.Up()
-            y++
-        }
-        for i := 0; i < 4; i++ {
-            buildTowerFace(t, i, dummy)
-        }
-        for i := 0; i < y; i++ {
-            t.Down()
-        }
-    }
-}
-
-// helper funcs, should later on also include selecting from inv if possible
-func place(t turtle.Turtle, bt blocks.Blocktype) bool {
-    t.SetInventory(bt)
-    return t.Place()
-}
-func placeUp(t turtle.Turtle, bt blocks.Blocktype) bool {
-    t.SetInventory(bt)
-    return t.PlaceUp()
-}
-func placeDown(t turtle.Turtle, bt blocks.Blocktype) bool {
-    t.SetInventory(bt)
-    return t.PlaceDown()
+	return func(t turtle.Turtle) {
+		y := 0
+		for t.Detect() {
+			t.Up()
+			y++
+		}
+		for i := 0; i < 4; i++ {
+			buildTowerFace(t, i, dummy)
+		}
+		for i := 0; i < y; i++ {
+			t.Down()
+		}
+	}
 }
 
 func buildTowerFace(t turtle.Turtle, faceNum int, dummy blocks.Blocktype) {
-    t.Forward()
-    t.TurnRight()
-    t.Up()
-    placeDown(t, blocks.Log)
-    t.Forward()
-    placeDown(t, blocks.Stone)
-    t.Forward()
-    placeDown(t, blocks.Log)
-    t.Forward()
-    placeDown(t, blocks.Stone)
-    usedummy := !t.Detect()
-    if usedummy {
-        place(t, dummy)
-    }
-    t.Back()
-    place(t, blocks.Log)
-    t.Up()
-    placeDown(t, blocks.Log)
-    t.Back()
-    t.Down()
-    t.Back()
-    place(t, blocks.Log)
-    t.Up()
-    placeDown(t, blocks.Log)
+	t.Forward()
+	t.TurnRight()
+	t.Up()
+	lib.PlaceDown(t, blocks.Log)
+	t.Forward()
+	lib.PlaceDown(t, blocks.Stone)
+	t.Forward()
+	lib.PlaceDown(t, blocks.Log)
+	t.Forward()
+	lib.PlaceDown(t, blocks.Stone)
+	usedummy := !t.Detect()
+	if usedummy {
+		lib.Place(t, dummy)
+	}
+	t.Back()
+	lib.Place(t, blocks.Log)
+	t.Up()
+	lib.PlaceDown(t, blocks.Log)
+	t.Back()
+	t.Down()
+	t.Back()
+	lib.Place(t, blocks.Log)
+	t.Up()
+	lib.PlaceDown(t, blocks.Log)
 
-    t.TurnLeft()
-    t.Back()
-    for i, bt := range []blocks.Blocktype{blocks.Brick, blocks.Planks, blocks.Planks, blocks.Planks, blocks.Brick, blocks.BrickSlab} {
-        if i > 0 {
-            t.Up()
-        }
-        place(t, bt)
-    }
+	t.TurnLeft()
+	t.Back()
+	for i, bt := range []blocks.Blocktype{blocks.Brick, blocks.Planks, blocks.Planks, blocks.Planks, blocks.Brick, blocks.BrickSlab} {
+		if i > 0 {
+			t.Up()
+		}
+		lib.Place(t, bt)
+	}
 	sidestepRight(t)
 	t.Down()
 	t.Forward()
 	t.TurnLeft()
 	t.Back()
-	place(t, blocks.Stairs)
+	lib.Place(t, blocks.Stairs)
 	sidestepLeft(t)
 	t.Forward()
 	t.TurnRight()
-    for _, bt := range []blocks.Blocktype{blocks.Planks, blocks.Brick, blocks.Brick, blocks.Brick} {
-        t.Down()
-        place(t, bt)
-    }
+	for _, bt := range []blocks.Blocktype{blocks.Planks, blocks.Brick, blocks.Brick, blocks.Brick} {
+		t.Down()
+		lib.Place(t, bt)
+	}
 	sidestepRight(t)
-	place(t, blocks.BrickSlab)
-    for i:=0;i<3;i++ {
-        t.Up()
-    }
-    place(t, blocks.Planks)
+	lib.Place(t, blocks.BrickSlab)
+	for i := 0; i < 3; i++ {
+		t.Up()
+	}
+	lib.Place(t, blocks.Planks)
 	t.Up()
 	t.Forward()
 	t.TurnRight()
 	t.Forward()
-	placeDown(t, blocks.Planks)
+	lib.PlaceDown(t, blocks.Planks)
 	t.Back()
-	place(t, blocks.Stairs)
+	lib.Place(t, blocks.Stairs)
 	t.TurnLeft()
 	t.Back()
-	place(t, blocks.BrickSlab)
+	lib.Place(t, blocks.BrickSlab)
 	sidestepRight(t)
 	t.Down()
-    for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		t.Down()
-		place(t, blocks.Brick)
+		lib.Place(t, blocks.Brick)
 	}
 
-    t.Up()
+	t.Up()
 	sidestepLeft(t)
 	t.Forward()
-	placeUp(t, blocks.BrickSlab)
+	lib.PlaceUp(t, blocks.BrickSlab)
 	t.Forward()
 	t.Down()
-	placeDown(t, blocks.Stone)
+	lib.PlaceDown(t, blocks.Stone)
 	t.TurnLeft()
 	t.Forward()
-	placeDown(t, blocks.Stone)
+	lib.PlaceDown(t, blocks.Stone)
 	t.Up()
 	t.Up()
-	placeUp(t, blocks.Stone)
+	lib.PlaceUp(t, blocks.Stone)
 	t.Back()
-	placeUp(t, blocks.Stone)
+	lib.PlaceUp(t, blocks.Stone)
 	t.TurnLeft()
 
-    if faceNum == 3 {
+	if faceNum == 3 {
 		t.Back()
-		placeUp(t, blocks.Stone)
+		lib.PlaceUp(t, blocks.Stone)
 		t.Down()
 		t.Down()
-		placeDown(t, blocks.Stone)
+		lib.PlaceDown(t, blocks.Stone)
 		t.Up()
 		t.Forward()
 	} else {
 		t.Down()
 	}
 
-    t.Forward()
+	t.Forward()
 	t.Forward()
 	t.TurnRight()
-    for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		t.Back()
 		t.Down()
 		if usedummy && i == 1 {
