@@ -19,5 +19,10 @@ func Ziggurat() *turtle.World {
 	t3.SetProgram(programs.Ziggurat)
 	t4.SetProgram(programs.Ziggurat)
 
+	t1.SetInfiniteInventory()
+	t2.SetInfiniteInventory()
+	t3.SetInfiniteInventory()
+	t4.SetInfiniteInventory()
+
 	return w
 }

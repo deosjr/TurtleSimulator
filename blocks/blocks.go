@@ -42,3 +42,8 @@ const (
 func GetBlock(t Blocktype) Block {
 	return BaseBlock{Type: t}
 }
+
+type Stack struct {
+	Type  Blocktype
+	Count int
+}

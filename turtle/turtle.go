@@ -1,8 +1,6 @@
 package turtle
 
 import (
-	"fmt"
-
 	"github.com/deosjr/TurtleSimulator/blocks"
 	"github.com/deosjr/TurtleSimulator/coords"
 )
@@ -30,24 +28,30 @@ type Turtle interface {
 	Run()
 	IsRunning() bool
 	String() string
-	SetInventory(blocks.Blocktype)
 	GetPos() coords.Pos
 	GetHeading() coords.Pos
 	Tick()
 	Tack()
+	// DEBUG
+	SetInventory(blocks.Blocktype)
+	SetInfiniteInventory()
+	SetInfiniteFuel()
 }
 
 type turtle struct {
 	blocks.BaseBlock
-	pos coords.Pos
-	//heading coords.Pos
+	pos     coords.Pos
 	world   *World
 	program Program
 	tick    chan bool
 	ack     chan bool
 	running bool
-	// hack for now: dont want to build inventory management yet
-	inventory blocks.Blocktype
+	// inventory management
+	inventory    [16]blocks.Stack
+	selectedSlot int
+	// debug states
+	infiniteFuel      bool
+	infiniteInventory bool
 }
 
 type Program func(Turtle)
@@ -68,15 +72,12 @@ func (t *turtle) TurnRight() {
 	t.ack <- true
 }
 
-// TODO: three lock/unlocks of mutex, can be optimised
 func (t *turtle) move(p coords.Pos) error {
-	_, ok := t.world.Read(p)
-	if ok {
-		return fmt.Errorf("block in position")
+	_, err := t.world.Move(t.pos, p)
+	if err != nil {
+		return err
 	}
-	t.world.Delete(t.pos)
 	t.pos = p
-	t.world.Write(p, t)
 	return nil
 }
 
@@ -176,8 +177,16 @@ func (t *turtle) place(p coords.Pos) bool {
 	if ok {
 		return false
 	}
-	toplace := blocks.GetBlock(t.inventory)
-	if t.inventory == blocks.Stairs {
+	selection := t.inventory[t.selectedSlot]
+	if selection.Count == 0 {
+		// NOTE: using equals 0 leaves room for -1 to mean infinite
+		return false
+	}
+	t.inventory[t.selectedSlot] = blocks.Stack{Type: selection.Type, Count: selection.Count - 1}
+	toplace := blocks.GetBlock(selection.Type)
+	// TODO: placement logic per type should be on block, not on turtle?
+	switch selection.Type {
+	case blocks.Stairs:
 		heading := coords.Pos{t.Heading.Y * -1, t.Heading.X, 0}
 		flipped := false
 		if t.up() == p {
@@ -186,15 +195,14 @@ func (t *turtle) place(p coords.Pos) bool {
 			}
 		}
 		toplace = blocks.BaseBlock{Type: blocks.Stairs, Heading: heading, Flipped: flipped}
-	}
-	if t.inventory == blocks.CobbleSlab || t.inventory == blocks.BrickSlab {
+	case blocks.CobbleSlab, blocks.BrickSlab:
 		flipped := false
 		if t.up() == p {
 			if _, upok := t.world.Read(p.Up()); upok {
 				flipped = true
 			}
 		}
-		toplace = blocks.BaseBlock{Type: t.inventory, Flipped: flipped}
+		toplace = blocks.BaseBlock{Type: selection.Type, Flipped: flipped}
 	}
 	t.world.Write(p, toplace)
 	return true
@@ -209,10 +217,6 @@ func (t *turtle) Inspect() (blocks.Block, bool) {
 
 func (t *turtle) inspect(p coords.Pos) (blocks.Block, bool) {
 	return t.world.Read(p)
-}
-
-func (t *turtle) SetInventory(bt blocks.Blocktype) {
-	t.inventory = bt
 }
 
 func (t *turtle) forward() coords.Pos {
@@ -277,11 +281,29 @@ func NewTurtle(p coords.Pos, w *World, heading coords.Pos) Turtle {
 			Heading: heading,
 			Type:    blocks.Turtle,
 		},
-		pos:   p,
-		world: w,
-		tick:  tick,
-		ack:   ack,
+		pos:       p,
+		world:     w,
+		tick:      tick,
+		ack:       ack,
+		inventory: [16]blocks.Stack{},
 	}
 	w.Write(p, t)
 	return t
+}
+
+func (t *turtle) SetInfiniteInventory() {
+	t.infiniteInventory = true
+}
+
+func (t *turtle) SetInfiniteFuel() {
+	t.infiniteFuel = true
+}
+
+// DEBUG statement to set infinite amount of blocks
+// assumes selection always at 0
+func (t *turtle) SetInventory(bt blocks.Blocktype) {
+	if !t.infiniteInventory {
+		return
+	}
+	t.inventory[0] = blocks.Stack{Type: bt, Count: -1}
 }

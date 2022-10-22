@@ -1,6 +1,7 @@
 package turtle
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/deosjr/TurtleSimulator/blocks"
@@ -83,4 +84,21 @@ func (w *World) Delete(p coords.Pos) {
 	w.mu.Lock()
 	delete(w.grid, p)
 	w.mu.Unlock()
+}
+
+// combines read, write and delete within 1 mutex lock/unlock
+func (w *World) Move(from, to coords.Pos) (blocks.Block, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	block, ok := w.grid[from]
+	if !ok {
+		return block, fmt.Errorf("no block found")
+	}
+	_, ok = w.grid[to]
+	if ok {
+		return block, fmt.Errorf("block in position")
+	}
+	delete(w.grid, from)
+	w.grid[to] = block
+	return block, nil
 }
