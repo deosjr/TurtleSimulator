@@ -22,6 +22,12 @@ type Turtle interface {
 	PlaceDown() bool
 	Dig() bool
 	Inspect() (blocks.Block, bool)
+	Select(slot int)
+	GetSelectedSlot() int
+	GetItemCount(slot int) int
+	GetItemDetail(slot int) blocks.Blocktype
+	GetFuelLevel() int
+	Refuel()
 
 	// my own functions
 	SetProgram(Program)
@@ -46,6 +52,7 @@ type turtle struct {
 	tick    chan bool
 	ack     chan bool
 	running bool
+	fuel    int
 	// inventory management
 	inventory    [16]blocks.Stack
 	selectedSlot int
@@ -73,6 +80,9 @@ func (t *turtle) TurnRight() {
 }
 
 func (t *turtle) move(p coords.Pos) error {
+	if !t.useFuel() {
+		return nil
+	}
 	_, err := t.world.Move(t.pos, p)
 	if err != nil {
 		return err
@@ -257,6 +267,58 @@ func (t *turtle) Run() {
 
 func (t *turtle) IsRunning() bool {
 	return t.running
+}
+
+// slot should be 0<=slot<16, silent ignore otherwise
+// note for generated code that lua indexes from 1 instead
+func (t *turtle) Select(slot int) {
+	if slot < 0 || slot > 15 {
+		return
+	}
+	t.selectedSlot = slot
+}
+
+func (t *turtle) GetSelectedSlot() int {
+	return t.selectedSlot
+}
+
+func (t *turtle) GetItemCount(slot int) int {
+	if slot < 0 || slot > 15 {
+		return 0
+	}
+	return t.inventory[slot].Count
+}
+
+func (t *turtle) GetItemDetail(slot int) blocks.Blocktype {
+	if slot < 0 || slot > 15 {
+		return blocks.Bedrock // TODO invalid?
+	}
+	return t.inventory[slot].Type
+}
+
+func (t *turtle) GetFuelLevel() int {
+	return t.fuel
+}
+
+func (t *turtle) Refuel() {
+	stack := t.inventory[t.selectedSlot]
+	// TODO actual fuel calculation other than coal
+	if stack.Type != blocks.Coal {
+		return
+	}
+	t.fuel += 8 * stack.Count
+	t.inventory[t.selectedSlot] = blocks.Stack{}
+}
+
+func (t *turtle) useFuel() bool {
+	if t.infiniteFuel {
+		return true
+	}
+	if t.fuel < 1 {
+		return false
+	}
+	t.fuel -= 1
+	return true
 }
 
 func (t *turtle) String() string {

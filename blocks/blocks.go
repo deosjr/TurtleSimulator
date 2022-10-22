@@ -37,6 +37,8 @@ const (
 	CobbleSlab
 	BrickSlab
 	Torch
+	// TODO: items!
+	Coal
 )
 
 func GetBlock(t Blocktype) Block {

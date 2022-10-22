@@ -28,11 +28,10 @@ func Fort() *turtle.World {
 	right := fmt.Sprintf("R%d", n-2)
 	t5.SetProgram(programs.Walls(n-2, right, right, right))
 
-	t1.SetInfiniteInventory()
-	t2.SetInfiniteInventory()
-	t3.SetInfiniteInventory()
-	t4.SetInfiniteInventory()
-	t5.SetInfiniteInventory()
+	for _, t := range w.Turtles {
+		t.SetInfiniteInventory()
+		t.SetInfiniteFuel()
+	}
 
 	return w
 }
