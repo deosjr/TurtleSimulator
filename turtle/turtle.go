@@ -1,6 +1,8 @@
 package turtle
 
 import (
+	"fmt"
+
 	"github.com/deosjr/TurtleSimulator/blocks"
 	"github.com/deosjr/TurtleSimulator/coords"
 )
@@ -21,13 +23,20 @@ type Turtle interface {
 	PlaceUp() bool
 	PlaceDown() bool
 	Dig() bool
+	DigUp() bool
+	DigDown() bool
 	Inspect() (blocks.Block, bool)
+	InspectUp() (blocks.Block, bool)
+	InspectDown() (blocks.Block, bool)
 	Select(slot int)
 	GetSelectedSlot() int
 	GetItemCount(slot int) int
 	GetItemDetail(slot int) blocks.Blocktype
 	GetFuelLevel() int
 	Refuel()
+	Suck(count int) error
+	SuckUp(count int) error
+	SuckDown(count int) error
 
 	// my own functions
 	SetProgram(Program)
@@ -49,12 +58,12 @@ type turtle struct {
 	pos     coords.Pos
 	world   *World
 	program Program
-	tick    chan bool
-	ack     chan bool
+	tick    chan struct{}
+	ack     chan struct{}
 	running bool
 	fuel    int
 	// inventory management
-	inventory    [16]blocks.Stack
+	inventory    *blocks.Inventory
 	selectedSlot int
 	// debug states
 	infiniteFuel      bool
@@ -70,18 +79,22 @@ func (t *turtle) GetPos() coords.Pos {
 func (t *turtle) TurnLeft() {
 	<-t.tick
 	t.Heading = coords.Pos{t.Heading.Y * -1, t.Heading.X, 0}
-	t.ack <- true
+	t.ack <- struct{}{}
 }
 
 func (t *turtle) TurnRight() {
 	<-t.tick
 	t.Heading = coords.Pos{t.Heading.Y * 1, -t.Heading.X, 0}
-	t.ack <- true
+	t.ack <- struct{}{}
 }
 
 func (t *turtle) move(p coords.Pos) error {
+	<-t.tick
+	defer func() {
+		t.ack <- struct{}{}
+	}()
 	if !t.useFuel() {
-		return nil
+		return fmt.Errorf("no fuel!")
 	}
 	_, err := t.world.Move(t.pos, p)
 	if err != nil {
@@ -92,52 +105,31 @@ func (t *turtle) move(p coords.Pos) error {
 }
 
 func (t *turtle) Forward() error {
-	<-t.tick
-	ok := t.move(t.forward())
-	t.ack <- true
-	return ok
+	return t.move(t.forward())
 }
 
 func (t *turtle) Back() error {
-	<-t.tick
-	ok := t.move(t.back())
-	t.ack <- true
-	return ok
+	return t.move(t.back())
 }
 
 func (t *turtle) Up() error {
-	<-t.tick
-	ok := t.move(t.up())
-	t.ack <- true
-	return ok
+	return t.move(t.up())
 }
 
 func (t *turtle) Down() error {
-	<-t.tick
-	ok := t.move(t.down())
-	t.ack <- true
-	return ok
+	return t.move(t.down())
 }
 
 func (t *turtle) Detect() bool {
-	<-t.tick
-	ok := t.detect(t.forward())
-	t.ack <- true
-	return ok
+	return t.detect(t.forward())
 }
 
 func (t *turtle) DetectUp() bool {
-	<-t.tick
-	ok := t.detect(t.up())
-	t.ack <- true
-	return ok
+	return t.detect(t.up())
 }
 
 func (t *turtle) DetectDown() bool {
-	<-t.tick
-	ok := t.detect(t.down())
-	t.ack <- true
-	return ok
+	return t.detect(t.down())
 }
 
 func (t *turtle) detect(p coords.Pos) bool {
@@ -146,13 +138,22 @@ func (t *turtle) detect(p coords.Pos) bool {
 }
 
 func (t *turtle) Dig() bool {
-	<-t.tick
-	ok := t.dig(t.forward())
-	t.ack <- true
-	return ok
+	return t.dig(t.forward())
+}
+
+func (t *turtle) DigUp() bool {
+	return t.dig(t.up())
+}
+
+func (t *turtle) DigDown() bool {
+	return t.dig(t.down())
 }
 
 func (t *turtle) dig(p coords.Pos) bool {
+	<-t.tick
+	defer func() {
+		t.ack <- struct{}{}
+	}()
 	_, ok := t.world.Read(p)
 	if !ok {
 		return false
@@ -162,37 +163,32 @@ func (t *turtle) dig(p coords.Pos) bool {
 }
 
 func (t *turtle) Place() bool {
-	<-t.tick
-	ok := t.place(t.forward())
-	t.ack <- true
-	return ok
+	return t.place(t.forward())
 }
 
 func (t *turtle) PlaceUp() bool {
-	<-t.tick
-	ok := t.place(t.up())
-	t.ack <- true
-	return ok
+	return t.place(t.up())
 }
 
 func (t *turtle) PlaceDown() bool {
-	<-t.tick
-	ok := t.place(t.down())
-	t.ack <- true
-	return ok
+	return t.place(t.down())
 }
 
 func (t *turtle) place(p coords.Pos) bool {
+	<-t.tick
+	defer func() {
+		t.ack <- struct{}{}
+	}()
 	_, ok := t.world.Read(p)
 	if ok {
 		return false
 	}
-	selection := t.inventory[t.selectedSlot]
+	selection := t.inventory.Get(t.selectedSlot)
 	if selection.Count == 0 {
 		// NOTE: using equals 0 leaves room for -1 to mean infinite
 		return false
 	}
-	t.inventory[t.selectedSlot] = blocks.Stack{Type: selection.Type, Count: selection.Count - 1}
+	t.inventory.Remove(t.selectedSlot, 1)
 	toplace := blocks.GetBlock(selection.Type)
 	// TODO: placement logic per type should be on block, not on turtle?
 	switch selection.Type {
@@ -219,10 +215,15 @@ func (t *turtle) place(p coords.Pos) bool {
 }
 
 func (t *turtle) Inspect() (blocks.Block, bool) {
-	<-t.tick
-	b, ok := t.inspect(t.forward())
-	t.ack <- true
-	return b, ok
+	return t.inspect(t.forward())
+}
+
+func (t *turtle) InspectUp() (blocks.Block, bool) {
+	return t.inspect(t.up())
+}
+
+func (t *turtle) InspectDown() (blocks.Block, bool) {
+	return t.inspect(t.down())
 }
 
 func (t *turtle) inspect(p coords.Pos) (blocks.Block, bool) {
@@ -250,7 +251,7 @@ func (t *turtle) SetProgram(f Program) {
 }
 
 func (t *turtle) Tick() {
-	t.tick <- true
+	t.tick <- struct{}{}
 }
 func (t *turtle) Tack() {
 	<-t.ack
@@ -286,28 +287,29 @@ func (t *turtle) GetItemCount(slot int) int {
 	if slot < 0 || slot > 15 {
 		return 0
 	}
-	return t.inventory[slot].Count
+	return t.inventory.Get(slot).Count
 }
 
 func (t *turtle) GetItemDetail(slot int) blocks.Blocktype {
 	if slot < 0 || slot > 15 {
 		return blocks.Bedrock // TODO invalid?
 	}
-	return t.inventory[slot].Type
+	return t.inventory.Get(slot).Type
 }
 
 func (t *turtle) GetFuelLevel() int {
 	return t.fuel
 }
 
+// TODO: is this blocking?
 func (t *turtle) Refuel() {
-	stack := t.inventory[t.selectedSlot]
+	stack := t.inventory.Get(t.selectedSlot)
 	// TODO actual fuel calculation other than coal
 	if stack.Type != blocks.Coal {
 		return
 	}
 	t.fuel += 8 * stack.Count
-	t.inventory[t.selectedSlot] = blocks.Stack{}
+	t.inventory.Set(t.selectedSlot, blocks.Stack{})
 }
 
 func (t *turtle) useFuel() bool {
@@ -319,6 +321,52 @@ func (t *turtle) useFuel() bool {
 	}
 	t.fuel -= 1
 	return true
+}
+
+func (t *turtle) Suck(count int) error {
+	return t.suck(t.forward(), count)
+}
+
+func (t *turtle) SuckUp(count int) error {
+	return t.suck(t.up(), count)
+}
+
+func (t *turtle) SuckDown(count int) error {
+	return t.suck(t.down(), count)
+}
+
+// TODO: only works on chests rn
+func (t *turtle) suck(p coords.Pos, count int) error {
+	<-t.tick
+	defer func() {
+		t.ack <- struct{}{}
+	}()
+	block, ok := t.world.Read(p)
+	if !ok {
+		return fmt.Errorf("no block found")
+	}
+	inv, ok := block.(*blocks.Chest)
+	if !ok {
+		return fmt.Errorf("no chest found")
+	}
+	// TODO: assumes selected 0 for both target and dest
+	got := inv.Get(0)
+	found := got.Count
+	if found == 0 {
+		return fmt.Errorf("no item found")
+	}
+	if found <= count {
+		inv.Set(0, blocks.Stack{})
+		count = found
+	} else {
+		inv.Remove(0, count)
+	}
+	if t.inventory.Get(0).Count == 0 {
+		t.inventory.Set(0, blocks.Stack{got.Type, found})
+	} else {
+		t.inventory.Add(0, found)
+	}
+	return nil
 }
 
 func (t *turtle) String() string {
@@ -336,8 +384,6 @@ func (t *turtle) String() string {
 }
 
 func NewTurtle(p coords.Pos, w *World, heading coords.Pos) Turtle {
-	tick := make(chan bool, 1)
-	ack := make(chan bool, 1)
 	t := &turtle{
 		BaseBlock: blocks.BaseBlock{
 			Heading: heading,
@@ -345,14 +391,15 @@ func NewTurtle(p coords.Pos, w *World, heading coords.Pos) Turtle {
 		},
 		pos:       p,
 		world:     w,
-		tick:      tick,
-		ack:       ack,
-		inventory: [16]blocks.Stack{},
+		tick:      make(chan struct{}, 1),
+		ack:       make(chan struct{}, 1),
+		inventory: blocks.NewInventory(16),
 	}
 	w.Write(p, t)
 	return t
 }
 
+// TODO: perhaps this should be set on inventory struct instead
 func (t *turtle) SetInfiniteInventory() {
 	t.infiniteInventory = true
 }
@@ -367,5 +414,5 @@ func (t *turtle) SetInventory(bt blocks.Blocktype) {
 	if !t.infiniteInventory {
 		return
 	}
-	t.inventory[0] = blocks.Stack{Type: bt, Count: -1}
+	t.inventory.Set(0, blocks.Stack{Type: bt, Count: -1})
 }

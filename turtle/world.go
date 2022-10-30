@@ -27,13 +27,19 @@ func NewWorld(dim int) *World {
 }
 
 func (w *World) Tick() {
-	for _, t := range w.Turtles {
+	idxs := []int{}
+	for i, t := range w.Turtles {
 		if !t.IsRunning() {
 			continue
 		}
-		t.Tick()
+		select {
+		case t.(*turtle).tick <- struct{}{}:
+			idxs = append(idxs, i)
+		default:
+		}
 	}
-	for _, t := range w.Turtles {
+	for _, i := range idxs {
+		t := w.Turtles[i]
 		if !t.IsRunning() {
 			continue
 		}
@@ -44,6 +50,7 @@ func (w *World) Tick() {
 func (w *World) Start() {
 	for _, t := range w.Turtles {
 		go t.Run()
+		// TODO: this will hang if t.program == nil
 		for !t.IsRunning() {
 		}
 	}

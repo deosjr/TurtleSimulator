@@ -27,7 +27,6 @@ type Blocktype int
 
 const (
 	Bedrock Blocktype = iota
-	Turtle
 	Stone
 	Grass
 	Stairs
@@ -39,6 +38,9 @@ const (
 	Torch
 	// TODO: items!
 	Coal
+	// TODO: complex blocks with state separate?
+	ChestType
+	Turtle
 )
 
 func GetBlock(t Blocktype) Block {
@@ -48,4 +50,48 @@ func GetBlock(t Blocktype) Block {
 type Stack struct {
 	Type  Blocktype
 	Count int
+}
+
+type Inventory struct {
+	NumSlots int
+	Slots    []Stack
+}
+
+func NewInventory(size int) *Inventory {
+	return &Inventory{NumSlots: size, Slots: make([]Stack, size)}
+}
+
+func (i *Inventory) Get(slot int) Stack {
+	if slot < 0 || slot > i.NumSlots {
+		return Stack{}
+	}
+	return i.Slots[slot]
+}
+
+func (i *Inventory) Add(slot, n int) {
+	if slot < 0 || slot > i.NumSlots {
+		return
+	}
+	stack := i.Slots[slot]
+	i.Slots[slot] = Stack{Type: stack.Type, Count: stack.Count + n}
+}
+
+func (i *Inventory) Remove(slot, n int) {
+	if slot < 0 || slot > i.NumSlots {
+		return
+	}
+	stack := i.Slots[slot]
+	i.Slots[slot] = Stack{Type: stack.Type, Count: stack.Count - n}
+}
+
+func (i *Inventory) Set(slot int, stack Stack) {
+	if slot < 0 || slot > i.NumSlots {
+		return
+	}
+	i.Slots[slot] = stack
+}
+
+type Chest struct {
+	BaseBlock
+	Inventory
 }
