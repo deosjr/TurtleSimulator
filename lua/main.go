@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"strings"
 	"unicode"
 
@@ -48,6 +49,7 @@ func main() {
 	}
 }
 
+// a program is an exported func of one parameter, which is a turtle
 func programs(f *ast.File) []*ast.FuncDecl {
 	programs := []*ast.FuncDecl{}
 	for _, decl := range f.Decls {
@@ -207,30 +209,89 @@ func generateLines(stmts []ast.Stmt) []line {
 		case *ast.ExprStmt:
 			cx, ok := s.X.(*ast.CallExpr)
 			if !ok {
+                fmt.Printf("unexpected ast type %T for exprstmt\n", s.X)
 				continue
 			}
-			switch f := cx.Fun.(type) {
-			case *ast.SelectorExpr:
-				lines = append(lines, line{s: printLuaFunc(f.X.(*ast.Ident).Name, f.Sel.Name, cx.Args)})
-			case *ast.Ident:
-				// assume toplevel declared func
-				lines = append(lines, line{s: fmt.Sprintf("TODO: %v", f.Name)})
-			}
+            lines = append(lines, generateCallExpr(cx))
 		case *ast.ForStmt:
+            body := generateLines(s.Body.List)
 			if s.Cond == nil {
-				fmt.Println("TODO WHILE: ", s)
+			    lines = append(lines, body...)
+			    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body)+1))})
 				continue
 			}
+			cond := generateExpr(s.Cond)
+            if s.Init == nil {
+			    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.condJump(i, %d, %s) end", len(body)+2, negate(cond.s))})
+			    lines = append(lines, body...)
+			    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body)+1))})
+				continue
+            }
 			fmt.Println("TODO 3-PART FOR: ", s)
 		case *ast.IfStmt:
-			cond := "TODO"
+			cond := generateExpr(s.Cond)
 			iflines := generateLines(s.Body.List)
 			elselines := generateLines(s.Else.(*ast.BlockStmt).List)
-			lines = append(lines, line{s: fmt.Sprintf("function () i = mem.condJump(i, %d, %s) end", len(iflines)+2, cond)})
+			lines = append(lines, line{s: fmt.Sprintf("function () i = mem.condJump(i, %d, %s) end", len(iflines)+2, negate(cond.s))})
 			lines = append(lines, iflines...)
 			lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", len(elselines)+1)})
 			lines = append(lines, elselines...)
+        default:
+            fmt.Printf("unexpected ast type %T for stmt\n", s)
 		}
 	}
 	return lines
+}
+
+func generateExpr(s ast.Expr) line {
+    switch t := s.(type) {
+    case *ast.CallExpr:
+        return generateCallExpr(t)
+    case *ast.BinaryExpr:
+        return generateBinaryExpr(t)
+    case *ast.UnaryExpr:
+        return generateUnaryExpr(t)
+    default:
+        fmt.Printf("unexpected ast type %T for expr\n", t)
+        return line{}
+    }
+}
+
+func generateCallExpr(s *ast.CallExpr) line {
+	switch f := s.Fun.(type) {
+	case *ast.SelectorExpr:
+		return line{s: printLuaFunc(f.X.(*ast.Ident).Name, f.Sel.Name, s.Args)}
+	case *ast.Ident:
+		// assume toplevel declared func
+		return line{s: fmt.Sprintf("TODO: %v", f.Name)}
+    default:
+        fmt.Printf("unexpected ast type %T for callexpr func\n", f)
+        return line{}
+	}
+}
+
+func generateBinaryExpr(s *ast.BinaryExpr) line {
+    switch s.Op {
+    default:
+        fmt.Printf("unsupported operator %#v for binaryexpr\n", s.Op.String())
+        return line{}
+    }
+}
+
+func generateUnaryExpr(s *ast.UnaryExpr) line {
+    switch s.Op {
+    case token.NOT:
+        inner := generateExpr(s.X).s
+		return line{s: negate(inner)}
+    default:
+        fmt.Printf("unsupported operator %#v for unaryexpr\n", s.Op.String())
+        return line{}
+    }
+}
+
+func negate(s string) string {
+    if strings.HasPrefix(s, "not ") {
+        return s[4:]
+    }
+    return "not " + s
 }

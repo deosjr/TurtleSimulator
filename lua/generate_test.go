@@ -117,7 +117,7 @@ func TestFirstPassFor(t *testing.T) {
 	}
 }
 
-func TestFirstPassWhile(t *testing.T) {
+func TestFirstPassWhileTrue(t *testing.T) {
 	src := `package main
     
 	import "github.com/deosjr/TurtleSimulator/turtle"
@@ -142,6 +142,41 @@ func TestFirstPassWhile(t *testing.T) {
 	want := codeBlock{
 		funcName: &funcName,
 		lines: []line{
+			{s: "turtle.forward()"},
+			{s: "function () i = mem.goto(i, -2) end"},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Expected %v but got %v", want, got)
+	}
+}
+
+func TestFirstPassWhileCond(t *testing.T) {
+	src := `package main
+    
+	import "github.com/deosjr/TurtleSimulator/turtle"
+
+    // comment
+    func Forward(t turtle.Turtle) {
+        for !t.Detect() {
+            t.Forward()
+        }
+    }`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "src.go", src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	progs := programs(f)
+	if len(progs) != 1 {
+		t.Fatalf("Expected 1 program but found %d", len(progs))
+	}
+	got := generateFirstPass(progs[0])
+	funcName := "forward"
+	want := codeBlock{
+		funcName: &funcName,
+		lines: []line{
+			{s: "function () i = mem.condJump(i, 3, turtle.detect()) end"},
 			{s: "turtle.forward()"},
 			{s: "function () i = mem.goto(i, -2) end"},
 		},
