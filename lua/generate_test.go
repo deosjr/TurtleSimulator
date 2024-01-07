@@ -102,15 +102,15 @@ func TestFirstPassFor(t *testing.T) {
 	if len(progs) != 1 {
 		t.Fatalf("Expected 1 program but found %d", len(progs))
 	}
-    gensymFunc = func() string { return "n" }
+	gensymFunc = func() string { return "n" }
 	got := generateFirstPass(progs[0])
 	funcName := "forward"
 	want := codeBlock{
 		funcName: &funcName,
 		lines: []line{
-            {s: "function () if state.n == nil then state.n = 0 end i = mem.condJump(i, 3, state.n >= 2) end"},
+			{s: "function () if state.n == nil then state.n = 0 end i = mem.condJump(i, 3, state.n >= 2) end"},
 			{s: "function () turtle.forward(); state.n = state.n+1"},
-            {s: "function () i = mem.goto(i, -2) end"},
+			{s: "function () i = mem.goto(i, -2) end"},
 		},
 	}
 	if !reflect.DeepEqual(got, want) {

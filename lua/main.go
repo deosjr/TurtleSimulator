@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"math/rand"
 	"strings"
 	"unicode"
 
@@ -22,16 +23,15 @@ type codeBlock struct {
 	lines    []line
 }
 
-// TODO can include variables for goto etc
+// TODO can include variables for goto etc (?)
 type line struct {
 	s string
 }
 
 var gensymFunc func() string = gensym
 
-// TODO
 func gensym() string {
-    return "j"
+	return fmt.Sprintf("gensym%d", rand.Int())
 }
 
 func main() {
@@ -47,10 +47,6 @@ func main() {
 		//file := programspkg.GoFiles[i]
 		syntax := programspkg.Syntax[i]
 		for _, f := range programs(syntax) {
-			// TODO: for now, only run for wallbuildfunc
-			if f.Name.Name != "Wallbuildfunc" {
-				continue
-			}
 			fmt.Println(generateProgram(f))
 		}
 	}
@@ -97,6 +93,7 @@ func (g *generator) Writef(format string, args ...any) {
 	fmt.Fprintf(&g.b, format, args...)
 }
 
+// TODO: this should generate version of program with mem lib
 func generateSimpleProgram(fd *ast.FuncDecl) string {
 	g := &generator{}
 	/*
@@ -128,9 +125,12 @@ func generateSimpleProgram(fd *ast.FuncDecl) string {
 	return g.b.String()
 }
 
+// generates a turtle program in lua that uses memlib so it keeps state over server downtime
+// and in general the chunk being offloaded in minecraft
 func generateProgram(fd *ast.FuncDecl) string {
 	g := &generator{}
 	name := strings.ToLower(fd.Name.Name)
+	// header
 	g.Writef(`-- comment
 local state = mem.startFromMemory(%q)
 if not state then
@@ -142,25 +142,12 @@ local stop = false -- used to communicate key Q pressed
 
 action = {
 `, name)
-	for _, stmt := range fd.Body.List {
-		switch s := stmt.(type) {
-		case *ast.ExprStmt:
-			cx, ok := s.X.(*ast.CallExpr)
-			if !ok {
-				continue
-			}
-			switch f := cx.Fun.(type) {
-			case *ast.SelectorExpr:
-				g.Writef("    %s,\n", printLuaFunc(f.X.(*ast.Ident).Name, f.Sel.Name, cx.Args))
-			case *ast.Ident:
-				fmt.Printf("%v\n", f)
-			}
-		case *ast.ForStmt:
-			fmt.Println("TODO FOR: ", s)
-		case *ast.IfStmt:
-			fmt.Println("TODO IFELSE: ", s)
-		}
+	// list of statements that should each be atomic wrt computercraft and minecraft ticks
+	block := generateFirstPass(fd)
+	for _, line := range block.lines {
+		g.Writef("    " + line.s + ",\n")
 	}
+	// footer incl main call
 	g.Writef(`}
 
 function main()
@@ -214,31 +201,31 @@ func generateLines(stmts []ast.Stmt) []line {
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.ExprStmt:
-            lines = append(lines, generateExpr(s.X))
+			lines = append(lines, generateExpr(s.X))
 		case *ast.ForStmt:
-            body := generateLines(s.Body.List)
+			body := generateLines(s.Body.List)
 			if s.Cond == nil {
-			    lines = append(lines, body...)
-			    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body)+1))})
+				lines = append(lines, body...)
+				lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body) + 1))})
 				continue
 			}
-            cond := negate(s.Cond)
+			cond := negate(s.Cond)
 			c := generateExpr(cond)
-            if s.Init == nil {
-			    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.condJump(i, %d, %s) end", len(body)+2, c.s)})
-			    lines = append(lines, body...)
-			    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body)+1))})
+			if s.Init == nil {
+				lines = append(lines, line{s: fmt.Sprintf("function () i = mem.condJump(i, %d, %s) end", len(body)+2, c.s)})
+				lines = append(lines, body...)
+				lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body) + 1))})
 				continue
-            }
-            // here we introduce a new variable into the global state!
-            // TODO: assumes init is var:=0 and incr is ++
-            loopvar := gensymFunc()
-            lines = append(lines, line{s: fmt.Sprintf("function () if state.%s == nil then state.%s = 0 end i = mem.condJump(i, %d, state.%s) end", loopvar, loopvar, len(body)+2, c.s)})
-            body[len(body)-1].s = "function () " + body[len(body)-1].s + fmt.Sprintf("; state.%s = state.%s+1", loopvar, loopvar)
-		    lines = append(lines, body...)
-		    lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body)+1))})
+			}
+			// here we introduce a new variable into the global state!
+			// TODO: assumes init is var:=0 and incr is ++
+			loopvar := gensymFunc()
+			lines = append(lines, line{s: fmt.Sprintf("function () if state.%s == nil then state.%s = 0 end i = mem.condJump(i, %d, state.%s) end", loopvar, loopvar, len(body)+2, c.s)})
+			body[len(body)-1].s = "function () " + body[len(body)-1].s + fmt.Sprintf("; state.%s = state.%s+1", loopvar, loopvar)
+			lines = append(lines, body...)
+			lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", -(len(body) + 1))})
 		case *ast.IfStmt:
-            cond := negate(s.Cond)
+			cond := negate(s.Cond)
 			c := generateExpr(cond)
 			iflines := generateLines(s.Body.List)
 			elselines := generateLines(s.Else.(*ast.BlockStmt).List)
@@ -246,29 +233,29 @@ func generateLines(stmts []ast.Stmt) []line {
 			lines = append(lines, iflines...)
 			lines = append(lines, line{s: fmt.Sprintf("function () i = mem.goto(i, %d) end", len(elselines)+1)})
 			lines = append(lines, elselines...)
-        default:
-            fmt.Printf("unexpected ast type %T for stmt\n", s)
+		default:
+			fmt.Printf("unexpected ast type %T for stmt\n", s)
 		}
 	}
 	return lines
 }
 
 func generateExpr(s ast.Expr) line {
-    switch t := s.(type) {
-    case *ast.CallExpr:
-        return generateCallExpr(t)
-    case *ast.BinaryExpr:
-        return generateBinaryExpr(t)
-    case *ast.UnaryExpr:
-        return generateUnaryExpr(t)
-    case *ast.Ident:
-        return line{s:t.Name}
-    case *ast.BasicLit:
-        return line{s:t.Value}
-    default:
-        fmt.Printf("unexpected ast type %T for expr\n", t)
-        return line{}
-    }
+	switch t := s.(type) {
+	case *ast.CallExpr:
+		return generateCallExpr(t)
+	case *ast.BinaryExpr:
+		return generateBinaryExpr(t)
+	case *ast.UnaryExpr:
+		return generateUnaryExpr(t)
+	case *ast.Ident:
+		return line{s: t.Name}
+	case *ast.BasicLit:
+		return line{s: t.Value}
+	default:
+		fmt.Printf("unexpected ast type %T for expr\n", t)
+		return line{}
+	}
 }
 
 func generateCallExpr(s *ast.CallExpr) line {
@@ -278,63 +265,63 @@ func generateCallExpr(s *ast.CallExpr) line {
 	case *ast.Ident:
 		// assume toplevel declared func
 		return line{s: fmt.Sprintf("TODO: %v", f.Name)}
-    default:
-        fmt.Printf("unexpected ast type %T for callexpr func\n", f)
-        return line{}
+	default:
+		fmt.Printf("unexpected ast type %T for callexpr func\n", f)
+		return line{}
 	}
 }
 
 func generateBinaryExpr(s *ast.BinaryExpr) line {
-    switch s.Op {
-    case token.LSS:
-        return line{s: generateExpr(s.X).s + " < " + generateExpr(s.Y).s}
-    case token.LEQ:
-        return line{s: generateExpr(s.X).s + " <= " + generateExpr(s.Y).s}
-    case token.GTR:
-        return line{s: generateExpr(s.X).s + " < " + generateExpr(s.Y).s}
-    case token.GEQ:
-        return line{s: generateExpr(s.X).s + " >= " + generateExpr(s.Y).s}
-    default:
-        fmt.Printf("unsupported operator %#v for binaryexpr\n", s.Op.String())
-        return line{}
-    }
+	switch s.Op {
+	case token.LSS:
+		return line{s: generateExpr(s.X).s + " < " + generateExpr(s.Y).s}
+	case token.LEQ:
+		return line{s: generateExpr(s.X).s + " <= " + generateExpr(s.Y).s}
+	case token.GTR:
+		return line{s: generateExpr(s.X).s + " < " + generateExpr(s.Y).s}
+	case token.GEQ:
+		return line{s: generateExpr(s.X).s + " >= " + generateExpr(s.Y).s}
+	default:
+		fmt.Printf("unsupported operator %#v for binaryexpr\n", s.Op.String())
+		return line{}
+	}
 }
 
 func generateUnaryExpr(s *ast.UnaryExpr) line {
-    switch s.Op {
-    case token.NOT:
-        return line{s: "not " + generateExpr(s.X).s}
-    default:
-        fmt.Printf("unsupported operator %#v for unaryexpr\n", s.Op.String())
-        return line{}
-    }
+	switch s.Op {
+	case token.NOT:
+		return line{s: "not " + generateExpr(s.X).s}
+	default:
+		fmt.Printf("unsupported operator %#v for unaryexpr\n", s.Op.String())
+		return line{}
+	}
 }
 
 func negate(s ast.Expr) ast.Expr {
-    switch t := s.(type) {
-    case *ast.UnaryExpr:
-        switch t.Op {
-        case token.NOT:
-            return t.X
-        default:
-            fmt.Printf("unsupported operator %#v for negate unaryexpr\n", t.Op.String())
-            return t
-        }
-    case *ast.BinaryExpr:
-        switch t.Op {
-        case token.LSS:
-            return &ast.BinaryExpr{X:t.X, Y:t.Y, Op:token.GEQ}
-        case token.LEQ:
-            return &ast.BinaryExpr{X:t.X, Y:t.Y, Op:token.GTR}
-        case token.GTR:
-            return &ast.BinaryExpr{X:t.X, Y:t.Y, Op:token.LEQ}
-        case token.GEQ:
-            return &ast.BinaryExpr{X:t.X, Y:t.Y, Op:token.LSS}
-        default:
-            fmt.Printf("unsupported operator %#v for negate binaryexpr\n", t.Op.String())
-            return t
-        }
-    default:
-        return &ast.UnaryExpr{Op: token.NOT, X: t}
-    }
+	switch t := s.(type) {
+	case *ast.UnaryExpr:
+		switch t.Op {
+		case token.NOT:
+			return t.X
+		default:
+			fmt.Printf("unsupported operator %#v for negate unaryexpr\n", t.Op.String())
+			return t
+		}
+	case *ast.BinaryExpr:
+		switch t.Op {
+		case token.LSS:
+			return &ast.BinaryExpr{X: t.X, Y: t.Y, Op: token.GEQ}
+		case token.LEQ:
+			return &ast.BinaryExpr{X: t.X, Y: t.Y, Op: token.GTR}
+		case token.GTR:
+			return &ast.BinaryExpr{X: t.X, Y: t.Y, Op: token.LEQ}
+		case token.GEQ:
+			return &ast.BinaryExpr{X: t.X, Y: t.Y, Op: token.LSS}
+		default:
+			fmt.Printf("unsupported operator %#v for negate binaryexpr\n", t.Op.String())
+			return t
+		}
+	default:
+		return &ast.UnaryExpr{Op: token.NOT, X: t}
+	}
 }
